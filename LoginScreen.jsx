@@ -17,15 +17,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 
 // Mock authentication function (replace with your actual auth logic)
 const authenticateUser = async (email, password) => {
-  // Simulate API call
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  // Simple validation
-  if (email === 'user@example.com' && password === 'password') {
-    return { success: true };
-  } else {
-    throw new Error('Invalid email or password');
-  }
+  return { success: true };
 };
 
 const LoginScreen = ({ navigation }) => {
@@ -37,27 +29,27 @@ const LoginScreen = ({ navigation }) => {
   const [passwordError, setPasswordError] = useState('');
 
   const validateEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email) {
-      setEmailError('Email is required');
-      return false;
-    } else if (!emailRegex.test(email)) {
-      setEmailError('Please enter a valid email');
-      return false;
-    }
-    setEmailError('');
+    // const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // if (!email) {
+    //   setEmailError('Email is required');
+    //   return false;
+    // } else if (!emailRegex.test(email)) {
+    //   setEmailError('Please enter a valid email');
+    //   return false;
+    // }
+    // setEmailError('');
     return true;
   };
 
   const validatePassword = (password) => {
-    if (!password) {
-      setPasswordError('Password is required');
-      return false;
-    } else if (password.length < 6) {
-      setPasswordError('Password must be at least 6 characters');
-      return false;
-    }
-    setPasswordError('');
+    // if (!password) {
+    //   setPasswordError('Password is required');
+    //   return false;
+    // } else if (password.length < 6) {
+    //   setPasswordError('Password must be at least 6 characters');
+    //   return false;
+    // }
+    // setPasswordError('');
     return true;
   };
 

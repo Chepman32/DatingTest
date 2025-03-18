@@ -2,6 +2,9 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
+import home from "./assets/home.png"
+import match from "./assets/match.png"
+import profile from "./assets/profile.png"
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 // Import screens
@@ -9,10 +12,13 @@ import HomeScreen from './HomeScreen';
 import ProfileScreen from './ProfileScreen';
 import ProfileCreationScreen from './ProfileCreationScreen';
 import MatchesScreen from './MatchesScreen';
-import LoginScreen from './LoginScreen'; // Assuming you have a LoginScreen
+import ChatScreen from './ChatScreen';
+import LoginScreen from './LoginScreen';
+import { Image } from 'react-native';
 
 const Tab = createBottomTabNavigator();
 const ProfileStack = createStackNavigator();
+const MatchesStack = createStackNavigator();
 const MainStack = createStackNavigator();
 
 // Profile stack navigator to handle nested navigation
@@ -33,6 +39,23 @@ const ProfileStackScreen = () => {
   );
 };
 
+// Matches stack navigator to handle chat screens
+const MatchesStackScreen = () => {
+  return (
+    <MatchesStack.Navigator>
+      <MatchesStack.Screen 
+        name="MatchesList" 
+        component={MatchesScreen} 
+        options={{ headerShown: false }}
+      />
+      <MatchesStack.Screen 
+        name="Chat" 
+        component={ChatScreen}
+      />
+    </MatchesStack.Navigator>
+  );
+};
+
 // Main app with tab navigation
 const MainTabNavigator = () => {
   return (
@@ -40,15 +63,18 @@ const MainTabNavigator = () => {
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
-
-          if (route.name === 'Home') {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'ProfileTab') {
+if (route.name === 'ProfileTab') {
             iconName = focused ? 'person' : 'person-outline';
-          } else if (route.name === 'Matches') {
-            iconName = focused ? 'heart' : 'heart-outline';
           }
-
+if(route.name === 'Home') {
+  return <Image source={home} style={{ width: 30, height: 30 }} />
+}
+else if (route.name === 'MatchesTab') {
+  return <Image source={match} style={{ width: 30, height: 30 }} />
+}
+else if (route.name === 'ProfileTab') {
+  return <Image source={profile} style={{ width: 30, height: 30 }} />
+}
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: '#007AFF',
@@ -61,9 +87,9 @@ const MainTabNavigator = () => {
         options={{ title: 'Home' }}
       />
       <Tab.Screen 
-        name="Matches" 
-        component={MatchesScreen} 
-        options={{ title: 'Matches' }}
+        name="MatchesTab" 
+        component={MatchesStackScreen} 
+        options={{ title: 'Matches', headerShown: false }}
       />
       <Tab.Screen 
         name="ProfileTab" 
