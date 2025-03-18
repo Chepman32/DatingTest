@@ -1,0 +1,20 @@
+{
+  "dev": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-datingtest-dev-5abaa-authRole",
+      "UnauthRoleArn": "arn:aws:iam::235494793518:role/amplify-datingtest-dev-5abaa-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::235494793518:role/amplify-datingtest-dev-5abaa-authRole",
+      "Region": "us-east-2",
+      "DeploymentBucketName": "amplify-datingtest-dev-5abaa-deployment",
+      "UnauthRoleName": "amplify-datingtest-dev-5abaa-unauthRole",
+      "StackName": "amplify-datingtest-dev-5abaa",
+      "StackId": "arn:aws:cloudformation:us-east-2:235494793518:stack/amplify-datingtest-dev-5abaa/12b19070-03eb-11f0-a240-021b95f8df07",
+      "AmplifyAppId": "d1yh1kicup8ctn"
+    },
+    "categories": {
+      "api": {
+        "datingtest": {}
+      }
+    }
+  }
+}
