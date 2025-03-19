@@ -11,14 +11,10 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   ActivityIndicator,
-  Alert
+  Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-
-// Mock authentication function (replace with your actual auth logic)
-const authenticateUser = async (email, password) => {
-  return { success: true };
-};
+import { Auth } from '@aws-amplify/auth';
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -28,31 +24,34 @@ const LoginScreen = ({ navigation }) => {
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
+  // Validate email format and presence
   const validateEmail = (email) => {
-    // const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    // if (!email) {
-    //   setEmailError('Email is required');
-    //   return false;
-    // } else if (!emailRegex.test(email)) {
-    //   setEmailError('Please enter a valid email');
-    //   return false;
-    // }
-    // setEmailError('');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) {
+      setEmailError('Email is required');
+      return false;
+    } else if (!emailRegex.test(email)) {
+      setEmailError('Please enter a valid email');
+      return false;
+    }
+    setEmailError('');
     return true;
   };
 
+  // Validate password presence and minimum length
   const validatePassword = (password) => {
-    // if (!password) {
-    //   setPasswordError('Password is required');
-    //   return false;
-    // } else if (password.length < 6) {
-    //   setPasswordError('Password must be at least 6 characters');
-    //   return false;
-    // }
-    // setPasswordError('');
+    if (!password) {
+      setPasswordError('Password is required');
+      return false;
+    } else if (password.length < 6) {
+      setPasswordError('Password must be at least 6 characters');
+      return false;
+    }
+    setPasswordError('');
     return true;
   };
 
+  // Handle login with Amplify Auth
   const handleLogin = async () => {
     const isEmailValid = validateEmail(email);
     const isPasswordValid = validatePassword(password);
@@ -63,31 +62,39 @@ const LoginScreen = ({ navigation }) => {
 
     try {
       setLoading(true);
-      await authenticateUser(email, password);
+      await Auth.signIn(email, password);
       navigation.replace('Main');
     } catch (error) {
-      Alert.alert('Login Failed', error.message);
+      if (error.code === 'UserNotConfirmedException') {
+        navigation.navigate('ConfirmSignUp', { email });
+      } else {
+        Alert.alert('Login Failed', error.message);
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // Placeholder for forgot password functionality
   const handleForgotPassword = () => {
     Alert.alert(
       'Reset Password',
       'A password reset link will be sent to your email',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'OK', onPress: () => console.log('Password reset requested') }
+        { text: 'OK', onPress: () => console.log('Password reset requested') },
       ]
     );
   };
 
+  // Navigate to sign-up screen
   const handleCreateAccount = () => {
-    // Navigate to a signup screen or handle account creation
-    Alert.alert('Create Account', 'Navigate to sign up screen');
-    // Uncomment the following if you have a SignUp screen
-    // navigation.navigate('SignUp');
+    navigation.navigate('SignUp');
+  };
+
+  // Placeholder for social sign-in
+  const handleSocialSignIn = (provider) => {
+    Alert.alert('Coming Soon', `Sign in with ${provider} is not yet implemented.`);
   };
 
   return (
@@ -140,7 +147,7 @@ const LoginScreen = ({ navigation }) => {
               onPress={() => setShowPassword(!showPassword)}
             >
               <Ionicons
-                name={showPassword ? "eye-off-outline" : "eye-outline"}
+                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                 size={20}
                 color="#666"
               />
@@ -171,12 +178,18 @@ const LoginScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.socialButtonsContainer}>
-            <TouchableOpacity style={[styles.socialButton, styles.googleButton]}>
+            <TouchableOpacity
+              style={[styles.socialButton, styles.googleButton]}
+              onPress={() => handleSocialSignIn('Google')}
+            >
               <Ionicons name="logo-google" size={20} color="#EA4335" />
               <Text style={styles.socialButtonText}>Google</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity style={[styles.socialButton, styles.appleButton]}>
+
+            <TouchableOpacity
+              style={[styles.socialButton, styles.appleButton]}
+              onPress={() => handleSocialSignIn('Apple')}
+            >
               <Ionicons name="logo-apple" size={20} color="#000" />
               <Text style={styles.socialButtonText}>Apple</Text>
             </TouchableOpacity>

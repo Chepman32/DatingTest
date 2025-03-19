@@ -2,18 +2,18 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import home from "./assets/home.png"
-import match from "./assets/match.png"
-import profile from "./assets/profile.png"
+import home from './assets/home.png';
+import match from './assets/match.png';
+import profile from './assets/profile.png';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-
-// Import screens
 import HomeScreen from './HomeScreen';
 import ProfileScreen from './ProfileScreen';
 import ProfileCreationScreen from './ProfileCreationScreen';
 import MatchesScreen from './MatchesScreen';
 import ChatScreen from './ChatScreen';
 import LoginScreen from './LoginScreen';
+import SignUpScreen from './SignUpScreen';
+import ConfirmSignUpScreen from './ConfirmSignUpScreen';
 import { Image } from 'react-native';
 
 const Tab = createBottomTabNavigator();
@@ -21,7 +21,6 @@ const ProfileStack = createStackNavigator();
 const MatchesStack = createStackNavigator();
 const MainStack = createStackNavigator();
 
-// Profile stack navigator to handle nested navigation
 const ProfileStackScreen = () => {
   return (
     <ProfileStack.Navigator>
@@ -39,7 +38,6 @@ const ProfileStackScreen = () => {
   );
 };
 
-// Matches stack navigator to handle chat screens
 const MatchesStackScreen = () => {
   return (
     <MatchesStack.Navigator>
@@ -56,25 +54,22 @@ const MatchesStackScreen = () => {
   );
 };
 
-// Main app with tab navigation
 const MainTabNavigator = () => {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
-if (route.name === 'ProfileTab') {
+          if (route.name === 'ProfileTab') {
             iconName = focused ? 'person' : 'person-outline';
           }
-if(route.name === 'Home') {
-  return <Image source={home} style={{ width: 30, height: 30 }} />
-}
-else if (route.name === 'MatchesTab') {
-  return <Image source={match} style={{ width: 30, height: 30 }} />
-}
-else if (route.name === 'ProfileTab') {
-  return <Image source={profile} style={{ width: 30, height: 30 }} />
-}
+          if (route.name === 'Home') {
+            return <Image source={home} style={{ width: 30, height: 30 }} />;
+          } else if (route.name === 'MatchesTab') {
+            return <Image source={match} style={{ width: 30, height: 30 }} />;
+          } else if (route.name === 'ProfileTab') {
+            return <Image source={profile} style={{ width: 30, height: 30 }} />;
+          }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: '#007AFF',
@@ -100,7 +95,6 @@ else if (route.name === 'ProfileTab') {
   );
 };
 
-// Root navigator for authentication flow
 const App = () => {
   return (
     <NavigationContainer>
@@ -109,6 +103,16 @@ const App = () => {
           name="Login" 
           component={LoginScreen} 
           options={{ headerShown: false }}
+        />
+        <MainStack.Screen 
+          name="SignUp" 
+          component={SignUpScreen} 
+          options={{ headerShown: false }}
+        />
+        <MainStack.Screen 
+          name="ConfirmSignUp" 
+          component={ConfirmSignUpScreen} 
+          options={{ title: 'Confirm Sign Up' }}
         />
         <MainStack.Screen 
           name="Main" 
