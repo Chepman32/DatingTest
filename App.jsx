@@ -1,4 +1,8 @@
 import React from 'react';
+import {
+  useAuthenticator,
+  withAuthenticator,
+} from '@aws-amplify/ui-react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -11,9 +15,6 @@ import ProfileScreen from './ProfileScreen';
 import ProfileCreationScreen from './ProfileCreationScreen';
 import MatchesScreen from './MatchesScreen';
 import ChatScreen from './ChatScreen';
-import LoginScreen from './LoginScreen';
-import SignUpScreen from './SignUpScreen';
-import ConfirmSignUpScreen from './ConfirmSignUpScreen';
 import { Image } from 'react-native';
 
 const Tab = createBottomTabNavigator();
@@ -22,11 +23,12 @@ const MatchesStack = createStackNavigator();
 const MainStack = createStackNavigator();
 
 const ProfileStackScreen = () => {
+  const { signOut } = useAuthenticator(); // This will work because withAuthenticator provides the context
   return (
     <ProfileStack.Navigator>
       <ProfileStack.Screen 
         name="Profile" 
-        component={ProfileScreen} 
+        component={() => <ProfileScreen signOut={signOut} />} 
         options={{ headerShown: false }}
       />
       <ProfileStack.Screen 
@@ -96,32 +98,29 @@ const MainTabNavigator = () => {
 };
 
 const App = () => {
+
   return (
     <NavigationContainer>
       <MainStack.Navigator>
         <MainStack.Screen 
-          name="Login" 
-          component={LoginScreen} 
-          options={{ headerShown: false }}
-        />
-        <MainStack.Screen 
-          name="SignUp" 
-          component={SignUpScreen} 
-          options={{ headerShown: false }}
-        />
-        <MainStack.Screen 
-          name="ConfirmSignUp" 
-          component={ConfirmSignUpScreen} 
-          options={{ title: 'Confirm Sign Up' }}
-        />
-        <MainStack.Screen 
           name="Main" 
           component={MainTabNavigator} 
-          options={{ headerShown: false }}
+          options={{
+            headerShown: false,
+            headerRight: () => (
+              <Ionicons
+                name="log-out-outline"
+                size={30}
+                color="#007AFF"
+                onPress={signOut}
+                style={{ marginRight: 15 }}
+              />
+            ),
+          }}
         />
       </MainStack.Navigator>
     </NavigationContainer>
   );
 };
 
-export default App;
+export default withAuthenticator(App);

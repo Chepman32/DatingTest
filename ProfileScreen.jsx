@@ -35,7 +35,7 @@ const fetchUserProfile = async () => {
   }
 };
 
-const ProfileScreen = ({ navigation }) => {
+const ProfileScreen = ({ navigation, signOut }) => {
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -63,7 +63,7 @@ const ProfileScreen = ({ navigation }) => {
       'Are you sure you want to logout?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Yes', onPress: () => navigation.navigate('Login') }, // Adjust navigation based on your auth flow
+        { text: 'Yes', onPress: () => signOut() }, // Adjust navigation based on your auth flow
       ]
     );
   };
