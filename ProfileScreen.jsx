@@ -1,38 +1,41 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  Image, 
-  ScrollView, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  ScrollView,
   ActivityIndicator,
-  Alert 
+  Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Auth } from 'aws-amplify';
+import { DataStore } from 'aws-amplify/datastore';
 
-// Mock API call (replace with your actual API)
-const fetchUserProfile = async () => {
-  try {
-    // Simulated API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    return {
-      name: 'John Doe',
-      age: 28,
-      location: 'New York, NY',
-      bio: 'Adventurer | Coffee lover | Tech enthusiast',
-      avatar: 'https://randomuser.me/api/portraits/men/4.jpg',
-      interests: ['Hiking', 'Photography', 'Technology', 'Travel'],
-      joinedDate: '2023-01-15',
-      photos: [
-        'https://randomuser.me/api/portraits/men/4.jpg',
-        'https://picsum.photos/200/300',
-        'https://picsum.photos/200/301',
-      ],
-    };
-  } catch (error) {
-    throw new Error('Failed to fetch profile data');
-  }
+// Define the User model inline (based on your schema)
+const User = {
+  name: 'User',
+  fields: {
+    id: 'ID!',
+    name: 'String!',
+    age: 'Int!',
+    bio: 'String',
+    imageUrl: 'String!',
+    gender: 'Gender',
+    lookingFor: '[Gender]',
+    location: 'String',
+    interests: '[String]',
+    lastActive: 'AWSDateTime',
+    createdAt: 'AWSDateTime',
+    updatedAt: 'AWSDateTime',
+    sentLikes: '[Match]',
+    receivedLikes: '[Match]',
+    sentMessages: '[Message]',
+    receivedMessages: '[Message]',
+    conversations: '[Conversation]',
+  },
 };
 
 const ProfileScreen = ({ navigation, signOut }) => {
@@ -40,18 +43,45 @@ const ProfileScreen = ({ navigation, signOut }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Remove loadProfileData from useEffect dependencies to avoid infinite loops
   useEffect(() => {
     loadProfileData();
-  }, []);
+  }, []); // Empty dependency array since we only want this to run once on mount
 
   const loadProfileData = async () => {
     try {
       setLoading(true);
-      const data = await fetchUserProfile();
-      setProfileData(data);
+      const currentUser = await Auth.currentAuthenticatedUser();
+      const userId = currentUser.attributes.sub; // Cognito sub is the user ID
+
+      // Query the User model using the authenticated user's ID
+      const userProfile = await DataStore.query(User, userId);
+
+      if (!userProfile) {
+        console.log('No profile found, redirecting to ProfileCreation');
+        navigation.navigate('ProfileCreation');
+        return;
+      }
+
+      // Format the data based on the schema
+      const formattedData = {
+        name: userProfile.name,
+        age: userProfile.age,
+        location: userProfile.location,
+        bio: userProfile.bio || 'No bio provided',
+        imageUrl: userProfile.imageUrl || 'https://randomuser.me/api/portraits/men/4.jpg', // Use imageUrl instead of avatar
+        interests: userProfile.interests || [], // No need for JSON.parse unless stored as a stringified JSON
+        joinedDate: userProfile.createdAt,
+        // No photos field in schema, so we'll leave it as an empty array for now
+        photos: [], 
+      };
+
+      setProfileData(formattedData);
       setError(null);
     } catch (err) {
-      setError(err.message);
+      console.error('Error loading profile:', err);
+      setError(`Failed to fetch profile data: ${err.message}`);
+      navigation.navigate('ProfileCreation'); // Redirect on error
     } finally {
       setLoading(false);
     }
@@ -63,7 +93,7 @@ const ProfileScreen = ({ navigation, signOut }) => {
       'Are you sure you want to logout?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Yes', onPress: () => signOut() }, // Adjust navigation based on your auth flow
+        { text: 'Yes', onPress: () => signOut() },
       ]
     );
   };
@@ -90,7 +120,7 @@ const ProfileScreen = ({ navigation, signOut }) => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Image source={{ uri: profileData.avatar }} style={styles.avatar} />
+        <Image source={{ uri: profileData.imageUrl }} style={styles.avatar} />
         <Text style={styles.name}>{profileData.name}</Text>
         <TouchableOpacity
           style={styles.editIcon}
@@ -137,7 +167,7 @@ const ProfileScreen = ({ navigation, signOut }) => {
 const InfoItem = ({ label, value }) => (
   <View style={styles.infoRow}>
     <Text style={styles.label}>{label}:</Text>
-    <Text style={styles.value}>{value}</Text>
+    <Text style={styles.value}>{value || 'Not set'}</Text>
   </View>
 );
 

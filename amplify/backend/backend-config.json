@@ -1,13 +1,33 @@
 {
   "api": {
     "datingtest": {
-      "dependsOn": [],
+      "dependsOn": [
+        {
+          "attributes": [
+            "UserPoolId"
+          ],
+          "category": "auth",
+          "resourceName": "datingtestca75556d"
+        }
+      ],
       "output": {
         "authConfig": {
-          "additionalAuthenticationProviders": [],
+          "additionalAuthenticationProviders": [
+            {
+              "authenticationType": "AMAZON_COGNITO_USER_POOLS",
+              "userPoolConfig": {
+                "userPoolId": "authdatingtestca75556d"
+              }
+            },
+            {
+              "authenticationType": "AWS_IAM"
+            }
+          ],
           "defaultAuthentication": {
             "apiKeyConfig": {
-              "apiKeyExpirationDays": 7
+              "apiKeyExpirationDate": "2026-03-21T11:35:05.647Z",
+              "apiKeyExpirationDays": 365,
+              "description": "21March"
             },
             "authenticationType": "API_KEY"
           }

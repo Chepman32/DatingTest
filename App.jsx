@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   useAuthenticator,
   withAuthenticator,
 } from '@aws-amplify/ui-react-native';
+import * as mutations from './src/graphql/mutations';
+import * as queries from './src/graphql/queries';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -16,6 +18,13 @@ import ProfileCreationScreen from './ProfileCreationScreen';
 import MatchesScreen from './MatchesScreen';
 import ChatScreen from './ChatScreen';
 import { Image } from 'react-native';
+import { getCurrentUser } from 'aws-amplify/auth';
+import { generateClient } from 'aws-amplify/api';
+import { Gender } from './src/models';
+
+const client = generateClient({
+  authMode: 'userPool',
+});
 
 const Tab = createBottomTabNavigator();
 const ProfileStack = createStackNavigator();
@@ -23,14 +32,9 @@ const MatchesStack = createStackNavigator();
 const MainStack = createStackNavigator();
 
 const ProfileStackScreen = () => {
-  const { signOut } = useAuthenticator(); // This will work because withAuthenticator provides the context
+  const { signOut } = useAuthenticator();
   return (
     <ProfileStack.Navigator>
-      <ProfileStack.Screen 
-        name="Profile" 
-        component={() => <ProfileScreen signOut={signOut} />} 
-        options={{ headerShown: false }}
-      />
       <ProfileStack.Screen 
         name="ProfileCreation" 
         component={ProfileCreationScreen} 
@@ -98,6 +102,90 @@ const MainTabNavigator = () => {
 };
 
 const App = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [isProfileCreated, setIsProfileCreated] = useState(false);
+  const { user } = useAuthenticator();
+
+  const listExistingUsers = async () => {
+    try {
+      const existingUsers = await client.graphql({
+        query: queries.listUsers,
+        authMode: 'userPool'
+      });
+      console.log('Existing users:', existingUsers.data.listUsers.items);
+      return existingUsers.data.listUsers.items;
+    } catch (error) {
+      console.error('Error listing users:', error);
+      return [];
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      const initializeData = async () => {
+        try {
+          await listExistingUsers();
+          await handleSave();
+        } catch (error) {
+          console.error('Error initializing data:', error);
+        }
+      };
+      initializeData();
+    }
+  }, [user]);
+
+  const handleSave = async () => {
+    setIsLoading(true);
+    try {
+      const { username, userId } = await getCurrentUser();
+      if (!userId || !username) {
+        throw new Error('User information not available');
+      }
+
+      console.log(`Checking profile for user: ${username}, ID: ${userId}`);
+
+      const existingUser = await client.graphql({
+        query: queries.getUser,
+        variables: { id: userId },
+        authMode: 'userPool',
+      });
+
+      if (existingUser.data.getUser) {
+        console.log('User profile already exists:', existingUser.data.getUser);
+        setIsProfileCreated(true);
+        return;
+      }
+
+      console.log(`Creating profile for user: ${username}, ID: ${userId}`);
+
+      const newUser = {
+        id: userId,
+        name: username,
+        age: 18,
+        imageUrl: "https://example.com/default-profile.jpg",
+        gender: Gender.MALE,
+        lookingFor: ["MALE", "FEMALE"],
+        bio: "1",
+        location: "1",
+        interests: ["1", "2"]
+      };
+
+      const createdUser = await client.graphql({
+        query: mutations.createUser,
+        variables: { input: newUser },
+        authMode: 'userPool'
+      });
+      
+      console.log('Profile created successfully:', createdUser);
+      setIsProfileCreated(true);
+      return createdUser;
+    } catch (error) {
+      console.error('Error creating profile:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <NavigationContainer>
@@ -107,15 +195,6 @@ const App = () => {
           component={MainTabNavigator} 
           options={{
             headerShown: false,
-            headerRight: () => (
-              <Ionicons
-                name="log-out-outline"
-                size={30}
-                color="#007AFF"
-                onPress={signOut}
-                style={{ marginRight: 15 }}
-              />
-            ),
           }}
         />
       </MainStack.Navigator>

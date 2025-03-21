@@ -1,214 +1,100 @@
 import React, { useState } from 'react';
-import {
-  StyleSheet,
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  PermissionsAndroid,
-} from 'react-native';
-import { launchImageLibrary } from 'react-native-image-picker'; // You'll need to install react-native-image-picker
+import { View, TextInput, Button, StyleSheet } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+import { getCurrentUser } from 'aws-amplify/auth';
+import { DataStore } from 'aws-amplify/datastore';
+import { User, Gender } from './src/models';
 
-const ProfileCreationScreen = ({ navigation }) => {
+const ProfileCreation = ({ navigation }) => {
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
-  const [profileImage, setProfileImage] = useState(null);
+  const [bio, setBio] = useState('');
+  const [location, setLocation] = useState('');
+  const [gender, setGender] = useState(Gender.MALE);
+  const [interests, setInterests] = useState('');
 
-  const requestPermission = async () => {
-    if (Platform.OS === 'android') {
-      try {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-          {
-            title: 'Storage Permission',
-            message: 'App needs access to your storage to select photos',
-            buttonPositive: 'OK',
-          }
-        );
-        return granted === PermissionsAndroid.RESULTS.GRANTED;
-      } catch (err) {
-        console.warn(err);
-        return false;
-      }
-    }
-    return true;
-  };
+  const handleSave = async () => {
+    const { username, userId } = await getCurrentUser();
+      console.log(`Creating profile for user: ${username}, ID: ${userId}`);
 
-  const pickImage = async () => {
-    const hasPermission = await requestPermission();
-    if (!hasPermission) {
-      alert('Sorry, we need storage permissions to make this work!');
-      return;
-    }
+      const newUser = new User({
+        id: userId, // Use Cognito user ID as the profile ID
+        name,
+        age: age ? age : null,
+        bio,
+        location,
+        gender,
+        interests: interests ? interests.split(',').map(i => i.trim()) : [],
+      });
 
-    const options = {
-      mediaType: 'photo',
-      quality: 1,
-      maxWidth: 800,
-      maxHeight: 800,
-      includeBase64: false,
-    };
+      await DataStore.save(newUser);
+      console.log('Profile created successfully!');
 
-    launchImageLibrary(options, (response) => {
-      if (response.didCancel) {
-        console.log('User cancelled image picker');
-      } else if (response.errorCode) {
-        console.log('ImagePicker Error: ', response.errorMessage);
-      } else {
-        const uri = response.assets[0].uri;
-        setProfileImage(uri);
-      }
-    });
-  };
-
-  const handleSaveProfile = () => {
-    if (!name || !age) {
-      alert('Please fill in all fields');
-      return;
-    }
-
-    if (isNaN(age) || parseInt(age) < 18) {
-      alert('Please enter a valid age (18 or older)');
-      return;
-    }
-
-    const profileData = {
-      name,
-      age: parseInt(age),
-      image: profileImage || 'https://picsum.photos/800/800?random',
-    };
-
-    navigation.navigate('Home', { profile: profileData });
+      navigation.navigate('ProfileScreen');
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <Text style={styles.title}>Create Your Profile</Text>
-
-        <TouchableOpacity style={styles.imageContainer} onPress={pickImage}>
-          {profileImage ? (
-            <Image source={{ uri: profileImage }} style={styles.profileImage} />
-          ) : (
-            <View style={styles.placeholderImage}>
-              <Text style={styles.placeholderText}>Tap to add photo</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Name</Text>
-          <TextInput
-            style={styles.input}
-            value={name}
-            onChangeText={setName}
-            placeholder="Enter your name"
-            placeholderTextColor="#999"
-          />
-
-          <Text style={styles.label}>Age</Text>
-          <TextInput
-            style={styles.input}
-            value={age}
-            onChangeText={setAge}
-            placeholder="Enter your age"
-            placeholderTextColor="#999"
-            keyboardType="numeric"
-          />
-        </View>
-
-        <TouchableOpacity style={styles.saveButton} onPress={handleSaveProfile}>
-          <Text style={styles.saveButtonText}>Save Profile</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    <View style={styles.container}>
+      <TextInput
+        style={styles.input}
+        placeholder="Name"
+        value={name}
+        onChangeText={setName}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Age"
+        value={age}
+        onChangeText={setAge}
+        keyboardType="numeric"
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Bio"
+        value={bio}
+        onChangeText={setBio}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Location"
+        value={location}
+        onChangeText={setLocation}
+      />
+      <Picker
+        selectedValue={gender}
+        onValueChange={(itemValue) => setGender(itemValue)}
+        style={styles.input}
+      >
+        <Picker.Item label="Male" value={Gender.MALE} />
+        <Picker.Item label="Female" value={Gender.FEMALE} />
+        <Picker.Item label="Non-binary" value={Gender.NON_BINARY} />
+        <Picker.Item label="Other" value={Gender.OTHER} />
+      </Picker>
+      <TextInput
+        style={styles.input}
+        placeholder="Interests (comma-separated)"
+        value={interests}
+        onChangeText={setInterests}
+      />
+      <Button title="Save Profile" onPress={handleSave} />
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f0f0',
-  },
-  scrollContainer: {
-    flexGrow: 1,
     padding: 20,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 30,
-    marginTop: 20,
-  },
-  imageContainer: {
-    marginBottom: 30,
-  },
-  profileImage: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    borderWidth: 2,
-    borderColor: '#4CCC93',
-  },
-  placeholderImage: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: '#ddd',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#999',
-    borderStyle: 'dashed',
-  },
-  placeholderText: {
-    color: '#666',
-    fontSize: 16,
-  },
-  inputContainer: {
-    width: '100%',
-    marginBottom: 30,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
+    backgroundColor: '#fff',
   },
   input: {
-    width: '100%',
-    height: 50,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    fontSize: 16,
-    color: '#333',
-    marginBottom: 20,
+    height: 40,
+    borderColor: 'gray',
     borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  saveButton: {
-    backgroundColor: '#4CCC93',
-    paddingVertical: 15,
-    paddingHorizontal: 40,
-    borderRadius: 25,
-    width: '100%',
-    alignItems: 'center',
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
+    marginBottom: 10,
+    paddingHorizontal: 10,
+    borderRadius: 5,
   },
 });
 
-export default ProfileCreationScreen;
+export default ProfileCreation;

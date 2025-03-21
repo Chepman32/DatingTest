@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { StyleSheet, View, Text, Image, TouchableOpacity, Dimensions } from 'react-native';
 import Swiper from 'react-native-deck-swiper';
 import { API, Auth, graphqlOperation } from 'aws-amplify';
+import { getCurrentUser } from 'aws-amplify/auth';
 import { getUser, listUsers, matchesByLikerId, matchesByLikeeId } from './src/graphql/queries';
 import { createMatch, updateMatch } from './src/graphql/mutations';
 
@@ -17,7 +18,11 @@ const HomeScreen = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const userInfo = await Auth.currentAuthenticatedUser();
+        const { username, userId, signInDetails } = await getCurrentUser();
+        console.log("Username:", username);
+        console.log("User ID:", userId);
+        console.log("Sign-in details:", signInDetails);
+        const userInfo = signInDetails;
         const currentUserId = userInfo.attributes.sub;
 
         // Fetch current user details
@@ -48,7 +53,7 @@ const HomeScreen = () => {
         );
         setUsers(potentialMatches);
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.log('Error fetching data:', error);
       }
     };
     fetchData();
