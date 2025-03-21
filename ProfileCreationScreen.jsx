@@ -4,6 +4,11 @@ import { Picker } from '@react-native-picker/picker';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { DataStore } from 'aws-amplify/datastore';
 import { User, Gender } from './src/models';
+import { generateClient } from 'aws-amplify/api';
+import * as queries from './src/graphql/queries';
+import * as mutations from './src/graphql/mutations';
+
+const client = generateClient()
 
 const ProfileCreation = ({ navigation }) => {
   const [name, setName] = useState('');
@@ -12,25 +17,60 @@ const ProfileCreation = ({ navigation }) => {
   const [location, setLocation] = useState('');
   const [gender, setGender] = useState(Gender.MALE);
   const [interests, setInterests] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isProfileCreated, setIsProfileCreated] = useState(false);
 
   const handleSave = async () => {
-    const { username, userId } = await getCurrentUser();
+    setIsLoading(true);
+    try {
+      const { username, userId } = await getCurrentUser();
+      if (!userId || !username) {
+        throw new Error('User information not available');
+      }
+
+      console.log(`Checking profile for user: ${username}, ID: ${userId}`);
+
+      const existingUser = await client.graphql({
+        query: queries.getUser,
+        variables: { id: userId },
+        authMode: 'userPool',
+      });
+
+      if (existingUser.data.getUser) {
+        console.log('User profile already exists:', existingUser.data.getUser);
+        setIsProfileCreated(true);
+        navigation.navigate('Profile');
+        return;
+      }
+
       console.log(`Creating profile for user: ${username}, ID: ${userId}`);
 
-      const newUser = new User({
-        id: userId, // Use Cognito user ID as the profile ID
+      const newUser = {
+        id: userId,
         name,
-        age: age ? age : null,
+        age: age || 0, // Ensure not null
         bio,
+        imageUrl: "https://us-east-2.admin.amplifyapp.com/static/media/amplify-logo.677fad72.svg", // Add this, ensure it's provided in the form
         location,
         gender,
         interests: interests ? interests.split(',').map(i => i.trim()) : [],
+      };
+
+      const createdUser = await client.graphql({
+        query: mutations.createUser,
+        variables: { input: newUser },
+        authMode: 'userPool'
       });
-
-      await DataStore.save(newUser);
-      console.log('Profile created successfully!');
-
-      navigation.navigate('ProfileScreen');
+      
+      console.log('Profile created successfully:', createdUser);
+      setIsProfileCreated(true);
+      return createdUser;
+    } catch (error) {
+      console.error('Error creating profile:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

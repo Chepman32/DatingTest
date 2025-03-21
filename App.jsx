@@ -106,34 +106,6 @@ const App = () => {
   const [isProfileCreated, setIsProfileCreated] = useState(false);
   const { user } = useAuthenticator();
 
-  const listExistingUsers = async () => {
-    try {
-      const existingUsers = await client.graphql({
-        query: queries.listUsers,
-        authMode: 'userPool'
-      });
-      console.log('Existing users:', existingUsers.data.listUsers.items);
-      return existingUsers.data.listUsers.items;
-    } catch (error) {
-      console.error('Error listing users:', error);
-      return [];
-    }
-  };
-
-  useEffect(() => {
-    if (user) {
-      const initializeData = async () => {
-        try {
-          await listExistingUsers();
-          await handleSave();
-        } catch (error) {
-          console.error('Error initializing data:', error);
-        }
-      };
-      initializeData();
-    }
-  }, [user]);
-
   const handleSave = async () => {
     setIsLoading(true);
     try {
