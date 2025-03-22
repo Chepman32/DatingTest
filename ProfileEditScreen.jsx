@@ -1,15 +1,13 @@
-import React, { useState } from 'react';
-import { View, TextInput, StyleSheet, Text, TouchableOpacity, ScrollView, SafeAreaView, Modal, FlatList } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, TextInput, StyleSheet, Text, TouchableOpacity, ScrollView, SafeAreaView, Modal } from 'react-native';
 import { getCurrentUser } from 'aws-amplify/auth';
-import { DataStore } from 'aws-amplify/datastore';
-import { User, Gender } from './src/models';
 import { generateClient } from 'aws-amplify/api';
 import * as queries from './src/graphql/queries';
 import * as mutations from './src/graphql/mutations';
 
-const client = generateClient()
+const client = generateClient();
 
-const ProfileCreation = ({ navigation }) => {
+const ProfileEdit = ({ navigation }) => {
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
   const [bio, setBio] = useState('');
@@ -17,7 +15,7 @@ const ProfileCreation = ({ navigation }) => {
   const [gender, setGender] = useState('MALE');
   const [interests, setInterests] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isProfileCreated, setIsProfileCreated] = useState(false);
+  const [isProfileUpdated, setIsProfileUpdated] = useState(false);
   const [dropdownVisible, setDropdownVisible] = useState(false);
   
   const genderOptions = [
@@ -25,60 +23,70 @@ const ProfileCreation = ({ navigation }) => {
     { label: 'Female', value: 'FEMALE' }
   ];
 
-  const handleSave = async () => {
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
     setIsLoading(true);
     try {
-      const { username, userId } = await getCurrentUser();
-      if (!userId || !username) {
-        throw new Error('User information not available');
-      }
-
-      console.log(`Checking profile for user: ${username}, ID: ${userId}`);
-
-      const existingUser = await client.graphql({
+      const { userId } = await getCurrentUser();
+      const userData = await client.graphql({
         query: queries.getUser,
         variables: { id: userId },
         authMode: 'userPool',
       });
 
-      if (existingUser.data.getUser) {
-        console.log('User profile already exists:', existingUser.data.getUser);
-        setIsProfileCreated(true);
-        navigation.navigate('Profile');
-        return;
+      if (userData.data.getUser) {
+        const user = userData.data.getUser;
+        setName(user.name || '');
+        setAge(user.age?.toString() || '');
+        setBio(user.bio || '');
+        setLocation(user.location || '');
+        setGender(user.gender || 'MALE');
+        setInterests(user.interests?.join(', ') || '');
       }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-      console.log(`Creating profile for user: ${username}, ID: ${userId}`);
-
-      const newUser = {
+  const handleSave = async () => {
+    setIsLoading(true);
+    setIsProfileUpdated(false);
+    try {
+      const { userId } = await getCurrentUser();
+      
+      const updatedUser = {
         id: userId,
         name,
-        age: age || 0,
+        age: age ? parseInt(age) : 0,
         bio,
-        imageUrl: "https://us-east-2.admin.amplifyapp.com/static/media/amplify-logo.677fad72.svg",
         location,
         gender,
         interests: interests ? interests.split(',').map(i => i.trim()) : [],
       };
 
-      const createdUser = await client.graphql({
-        query: mutations.createUser,
-        variables: { input: newUser },
+      const result = await client.graphql({
+        query: mutations.updateUser,
+        variables: { input: updatedUser },
         authMode: 'userPool'
       });
       
-      console.log('Profile created successfully:', createdUser);
-      setIsProfileCreated(true);
-      return createdUser;
+      console.log('Profile updated successfully:', result);
+      setIsProfileUpdated(true);
+      setTimeout(() => navigation.navigate('Profile'), 1500);
+      return result;
     } catch (error) {
-      console.error('Error creating profile:', error);
+      console.error('Error updating profile:', error);
       throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Get the label of the selected gender
   const getSelectedGenderLabel = () => {
     const selected = genderOptions.find(option => option.value === gender);
     return selected ? selected.label : 'Select Gender';
@@ -88,7 +96,7 @@ const ProfileCreation = ({ navigation }) => {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.container}>
-          <Text style={styles.header}>Create Your Profile</Text>
+          <Text style={styles.header}>Edit Your Profile</Text>
           
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Name</Text>
@@ -203,12 +211,12 @@ const ProfileCreation = ({ navigation }) => {
             disabled={isLoading}
           >
             <Text style={styles.saveButtonText}>
-              {isLoading ? 'Saving...' : 'Save Profile'}
+              {isLoading ? 'Updating...' : 'Update Profile'}
             </Text>
           </TouchableOpacity>
           
-          {isProfileCreated && (
-            <Text style={styles.successMessage}>Profile created successfully!</Text>
+          {isProfileUpdated && (
+            <Text style={styles.successMessage}>Profile updated successfully!</Text>
           )}
         </View>
       </ScrollView>
@@ -342,4 +350,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ProfileCreation;
+export default ProfileEdit;

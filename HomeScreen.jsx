@@ -5,6 +5,9 @@ import { API, Auth, graphqlOperation } from 'aws-amplify';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { getUser, listUsers, matchesByLikerId, matchesByLikeeId } from './src/graphql/queries';
 import { createMatch, updateMatch } from './src/graphql/mutations';
+import { generateClient } from 'aws-amplify/api';
+
+const client = generateClient();
 
 const { height: windowHeight } = Dimensions.get('window');
 
@@ -13,7 +16,19 @@ const HomeScreen = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [sentLikeeIds, setSentLikeeIds] = useState([]);
   const [receivedLikerIds, setReceivedLikerIds] = useState([]);
+  const [usersList, setUsersList] = useState([]);
   const swiperRef = useRef(null);
+
+  const fetchUsers = async () => {
+    const usersData = await client.graphql({ query: listUsers });
+        console.log('Users data:', usersData.data.listUsers.items);
+        setUsersList(usersData.data.listUsers.items);
+        return usersData.data.listUsers.items
+  }
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -23,10 +38,10 @@ const HomeScreen = () => {
         console.log("User ID:", userId);
         console.log("Sign-in details:", signInDetails);
         const userInfo = signInDetails;
-        const currentUserId = userInfo.attributes.sub;
+        const currentUserId = userId
 
         // Fetch current user details
-        const userData = await API.graphql(graphqlOperation(getUser, { id: currentUserId }));
+        const userData = await client.graphql({ query: getUser, variables: { id: currentUserId } });
         const fetchedUser = userData.data.getUser;
         setCurrentUser(fetchedUser);
 
@@ -47,7 +62,8 @@ const HomeScreen = () => {
           lookingFor: { contains: fetchedUser.gender },
           id: { ne: currentUserId }
         };
-        const usersData = await API.graphql(graphqlOperation(listUsers, { filter }));
+        const usersData = await client.graphql({ query: listUsers });
+        console.log('Users data:', usersData);
         const potentialMatches = usersData.data.listUsers.items.filter(user =>
           fetchedUser.lookingFor.includes(user.gender) && !likeeIds.includes(user.id)
         );
@@ -78,8 +94,8 @@ const HomeScreen = () => {
           match => match.likerId === swipedUserId
         );
         if (existingMatch) {
-          await API.graphql(graphqlOperation(updateMatch, { input: { id: existingMatch.id, matched: true } }));
-          await API.graphql(graphqlOperation(updateMatch, { input: { id: createdMatch.id, matched: true } }));
+          await client.graphql({ query: updateMatch, variables: { input: { id: existingMatch.id, matched: true } } });
+          await client.graphql({ query: updateMatch, variables: { input: { id: createdMatch.id, matched: true } } });
         }
       }
 
@@ -96,20 +112,25 @@ const HomeScreen = () => {
     setUsers(prev => prev.filter(user => user.id !== swipedUser.id));
   };
 
-  const renderCard = (card) => (
-    <View style={styles.card}>
-      <Image source={{ uri: card?.imageUrl }} style={styles.image} />
-      <View style={styles.nameContainer}>
-        <Text style={styles.name}>{card?.name}, {card?.age}</Text>
+  const renderCard = (card) => {
+    console.log('Rendering card:', card);
+    return (
+      <View style={styles.card}>
+        <Image source={{ uri: card?.imageUrl }} style={styles.image} />
+        <View style={styles.nameContainer}>
+          <Text style={styles.name}>{card?.name}, {card?.age}</Text>
+        </View>
       </View>
-    </View>
-  );
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <Swiper
+      {
+        usersList.length > 0 ? (
+          <Swiper
         ref={swiperRef}
-        cards={users}
+        cards={usersList}
         renderCard={renderCard}
         cardIndex={0}
         backgroundColor="#f0f0f0"
@@ -136,6 +157,14 @@ const HomeScreen = () => {
         onSwipedRight={handleLike}
         onSwipedLeft={handleDislike}
       />
+        )
+        :
+        (
+          <View style={styles.noMatchesContainer}>
+            <Text style={styles.noMatchesText}>No matches found</Text>
+          </View>
+        )
+      }
       <View style={styles.buttonContainer}>
         <TouchableOpacity style={styles.dislikeButton} onPress={() => swiperRef.current?.swipeLeft()}>
           <Text style={styles.buttonText}>Dislike</Text>
@@ -204,6 +233,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
+  noMatchesText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+  }
 });
 
 export default HomeScreen;

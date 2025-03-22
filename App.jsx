@@ -21,6 +21,7 @@ import { Image } from 'react-native';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { generateClient } from 'aws-amplify/api';
 import { Gender } from './src/models';
+import ProfileEdit from './ProfileEditScreen';
 
 const client = generateClient({
   authMode: 'userPool',
@@ -36,8 +37,18 @@ const ProfileStackScreen = () => {
   return (
     <ProfileStack.Navigator>
       <ProfileStack.Screen 
+        name="Profile" 
+        component={ProfileScreen} 
+        options={{ title: 'Profile' }}
+      />
+      <ProfileStack.Screen 
         name="ProfileCreation" 
         component={ProfileCreationScreen} 
+        options={{ title: 'Create Profile' }}
+      />
+      <ProfileStack.Screen 
+        name="ProfileEditing" 
+        component={ProfileEdit} 
         options={{ title: 'Edit Profile' }}
       />
     </ProfileStack.Navigator>
@@ -102,63 +113,6 @@ const MainTabNavigator = () => {
 };
 
 const App = () => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [isProfileCreated, setIsProfileCreated] = useState(false);
-  const { user } = useAuthenticator();
-
-  const handleSave = async () => {
-    setIsLoading(true);
-    try {
-      const { username, userId } = await getCurrentUser();
-      if (!userId || !username) {
-        throw new Error('User information not available');
-      }
-
-      console.log(`Checking profile for user: ${username}, ID: ${userId}`);
-
-      const existingUser = await client.graphql({
-        query: queries.getUser,
-        variables: { id: userId },
-        authMode: 'userPool',
-      });
-
-      if (existingUser.data.getUser) {
-        console.log('User profile already exists:', existingUser.data.getUser);
-        setIsProfileCreated(true);
-        return;
-      }
-
-      console.log(`Creating profile for user: ${username}, ID: ${userId}`);
-
-      const newUser = {
-        id: userId,
-        name: username,
-        age: 18,
-        imageUrl: "https://example.com/default-profile.jpg",
-        gender: Gender.MALE,
-        lookingFor: ["MALE", "FEMALE"],
-        bio: "1",
-        location: "1",
-        interests: ["1", "2"]
-      };
-
-      const createdUser = await client.graphql({
-        query: mutations.createUser,
-        variables: { input: newUser },
-        authMode: 'userPool'
-      });
-      
-      console.log('Profile created successfully:', createdUser);
-      setIsProfileCreated(true);
-      return createdUser;
-    } catch (error) {
-      console.error('Error creating profile:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <NavigationContainer>
       <MainStack.Navigator>

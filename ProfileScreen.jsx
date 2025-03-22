@@ -1,21 +1,22 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  Image, 
-  ScrollView, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  ScrollView,
   ActivityIndicator,
-  Alert 
+  Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { generateClient } from 'aws-amplify/api';
 import * as queries from './src/graphql/queries';
+import edit from './assets/edit.png';
 
-const client = generateClient()
+const client = generateClient();
 
 const ProfileScreen = ({ navigation, signOut }) => {
   const [profileData, setProfileData] = useState(null);
@@ -24,7 +25,7 @@ const ProfileScreen = ({ navigation, signOut }) => {
 
   useEffect(() => {
     loadProfileData();
-  }, [loadProfileData]);
+  }, []);
 
   const loadProfileData = async () => {
     try {
@@ -41,18 +42,17 @@ const ProfileScreen = ({ navigation, signOut }) => {
         authMode: 'userPool',
       });
 
+      console.log('GraphQL response:', existingUser);
+
       if (existingUser.data.getUser) {
         console.log('User profile already exists:', existingUser.data.getUser);
-        return;
-      }
-      else {
+        setProfileData(existingUser.data.getUser);
+      } else {
         console.log('User profile does not exist');
-        navigation.navigate('ProfileCreation');
+        navigation.navigate('ProfileEditing');
       }
 
-      setProfileData(existingUser.data.getUser);
       setError(null);
-      
     } catch (err) {
       setError('Failed to fetch profile data');
       console.error(err);
@@ -62,14 +62,10 @@ const ProfileScreen = ({ navigation, signOut }) => {
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Yes', onPress: () => signOut() },
-      ]
-    );
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Yes', onPress: () => signOut() },
+    ]);
   };
 
   if (loading) {
@@ -84,8 +80,26 @@ const ProfileScreen = ({ navigation, signOut }) => {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>{error}</Text>
+        <Image
+          source={{ uri: edit }}
+          style={styles.avatar}
+        />
         <TouchableOpacity style={styles.retryButton} onPress={loadProfileData}>
           <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (!profileData) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>No profile data available</Text>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={() => navigation.navigate('ProfileCreation')}
+        >
+          <Text style={styles.retryButtonText}>Create Profile</Text>
         </TouchableOpacity>
       </View>
     );
@@ -94,13 +108,12 @@ const ProfileScreen = ({ navigation, signOut }) => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Image source={{ uri: profileData?.imageUrl }} style={styles.avatar} />
         <Text style={styles.name}>{profileData?.name}</Text>
         <TouchableOpacity
           style={styles.editIcon}
-          onPress={() => navigation.navigate('ProfileCreation')}
+          onPress={() => navigation.navigate('ProfileEditing')}
         >
-          <Ionicons name="pencil" size={24} color="#007AFF" />
+          <Image source={edit} style={styles.editImage} />
         </TouchableOpacity>
       </View>
 
@@ -114,7 +127,7 @@ const ProfileScreen = ({ navigation, signOut }) => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Interests</Text>
         <View style={styles.interestsContainer}>
-          {profileData?.interests.map((interest, index) => (
+          {profileData?.interests?.map((interest, index) => (
             <View key={index} style={styles.interestTag}>
               <Text style={styles.interestText}>{interest}</Text>
             </View>
@@ -125,7 +138,7 @@ const ProfileScreen = ({ navigation, signOut }) => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Photos</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {profileData?.photos.map((photo, index) => (
+          {profileData?.photos?.map((photo, index) => (
             <Image key={index} source={{ uri: photo }} style={styles.photo} />
           ))}
         </ScrollView>
@@ -141,7 +154,7 @@ const ProfileScreen = ({ navigation, signOut }) => {
 const InfoItem = ({ label, value }) => (
   <View style={styles.infoRow}>
     <Text style={styles.label}>{label}:</Text>
-    <Text style={styles.value}>{value}</Text>
+    <Text style={styles.value}>{value || 'Not provided'}</Text>
   </View>
 );
 
@@ -149,6 +162,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  editImage: {
+    width: 24,
+    height: 24,
   },
   loadingContainer: {
     flex: 1,
@@ -182,8 +199,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   avatar: {
-    width: 120,
-    height: 120,
+    width: 200,
+    height: 200,
     borderRadius: 60,
     marginBottom: 10,
   },
