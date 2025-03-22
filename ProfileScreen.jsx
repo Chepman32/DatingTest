@@ -49,7 +49,7 @@ const ProfileScreen = ({ navigation, signOut }) => {
         setProfileData(existingUser.data.getUser);
       } else {
         console.log('User profile does not exist');
-        navigation.navigate('ProfileEditing');
+        navigation.navigate('ProfileEdit');
       }
 
       setError(null);
@@ -81,7 +81,7 @@ const ProfileScreen = ({ navigation, signOut }) => {
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>{error}</Text>
         <Image
-          source={{ uri: edit }}
+          source={edit}
           style={styles.avatar}
         />
         <TouchableOpacity style={styles.retryButton} onPress={loadProfileData}>
@@ -97,7 +97,7 @@ const ProfileScreen = ({ navigation, signOut }) => {
         <Text style={styles.errorText}>No profile data available</Text>
         <TouchableOpacity
           style={styles.retryButton}
-          onPress={() => navigation.navigate('ProfileCreation')}
+          onPress={() => navigation.navigate('ProfileEdit')}
         >
           <Text style={styles.retryButtonText}>Create Profile</Text>
         </TouchableOpacity>
@@ -108,10 +108,14 @@ const ProfileScreen = ({ navigation, signOut }) => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
+        <Image
+          source={profileData.imageUrl ? { uri: profileData.imageUrl } : edit}
+          style={styles.avatar}
+        />
         <Text style={styles.name}>{profileData?.name}</Text>
         <TouchableOpacity
           style={styles.editIcon}
-          onPress={() => navigation.navigate('ProfileEditing')}
+          onPress={() => navigation.navigate('ProfileEdit')}
         >
           <Image source={edit} style={styles.editImage} />
         </TouchableOpacity>
@@ -121,7 +125,8 @@ const ProfileScreen = ({ navigation, signOut }) => {
         <InfoItem label="Age" value={profileData?.age} />
         <InfoItem label="Location" value={profileData?.location} />
         <InfoItem label="Bio" value={profileData?.bio} />
-        <InfoItem label="Joined" value={new Date(profileData?.joinedDate).toLocaleDateString()} />
+        <InfoItem label="Gender" value={profileData?.gender} />
+        <InfoItem label="Joined" value={new Date(profileData?.createdAt).toLocaleDateString()} />
       </View>
 
       <View style={styles.section}>
@@ -133,15 +138,6 @@ const ProfileScreen = ({ navigation, signOut }) => {
             </View>
           ))}
         </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Photos</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {profileData?.photos?.map((photo, index) => (
-            <Image key={index} source={{ uri: photo }} style={styles.photo} />
-          ))}
-        </ScrollView>
       </View>
 
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -199,8 +195,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   avatar: {
-    width: 200,
-    height: 200,
+    width: 120,
+    height: 120,
     borderRadius: 60,
     marginBottom: 10,
   },
@@ -260,12 +256,6 @@ const styles = StyleSheet.create({
   interestText: {
     color: '#fff',
     fontSize: 14,
-  },
-  photo: {
-    width: 100,
-    height: 100,
-    borderRadius: 10,
-    marginRight: 10,
   },
   logoutButton: {
     backgroundColor: '#ff4444',

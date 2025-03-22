@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, TextInput, StyleSheet, Text, TouchableOpacity, ScrollView, SafeAreaView, Modal } from 'react-native';
+import { View, TextInput, StyleSheet, Text, TouchableOpacity, ScrollView, SafeAreaView, Modal, Image, Platform } from 'react-native';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { generateClient } from 'aws-amplify/api';
+import { launchImageLibrary } from 'react-native-image-picker';
 import * as queries from './src/graphql/queries';
 import * as mutations from './src/graphql/mutations';
 
@@ -13,14 +14,23 @@ const ProfileEdit = ({ navigation }) => {
   const [bio, setBio] = useState('');
   const [location, setLocation] = useState('');
   const [gender, setGender] = useState('MALE');
-  const [interests, setInterests] = useState('');
+  const [selectedInterests, setSelectedInterests] = useState([]);
+  const [imageUrl, setImageUrl] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isProfileUpdated, setIsProfileUpdated] = useState(false);
   const [dropdownVisible, setDropdownVisible] = useState(false);
   
   const genderOptions = [
     { label: 'Male', value: 'MALE' },
-    { label: 'Female', value: 'FEMALE' }
+    { label: 'Female', value: 'FEMALE' },
+    { label: 'Non-binary', value: 'NON_BINARY' },
+    { label: 'Other', value: 'OTHER' }
+  ];
+
+  const availableInterests = [
+    'Hiking', 'Reading', 'Cooking', 'Gaming', 'Traveling', 
+    'Photography', 'Music', 'Sports', 'Art', 'Technology',
+    'Movies', 'Fitness', 'Writing', 'Dancing', 'Gardening'
   ];
 
   useEffect(() => {
@@ -44,12 +54,45 @@ const ProfileEdit = ({ navigation }) => {
         setBio(user.bio || '');
         setLocation(user.location || '');
         setGender(user.gender || 'MALE');
-        setInterests(user.interests?.join(', ') || '');
+        setSelectedInterests(user.interests || []);
+        setImageUrl(user.imageUrl || null);
       }
     } catch (error) {
       console.error('Error loading profile:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const pickImage = async () => {
+    const options = {
+      mediaType: 'photo',
+      includeBase64: true,
+      maxHeight: 500,
+      maxWidth: 500,
+      quality: 0.5,
+    };
+
+    launchImageLibrary(options, (response) => {
+      if (response.didCancel) {
+        console.log('User cancelled image picker');
+      } else if (response.errorCode) {
+        console.log('ImagePicker Error: ', response.errorMessage);
+        if (response.errorCode === 'permission') {
+          alert('Permission to access photo library is required!');
+        }
+      } else if (response.assets && response.assets.length > 0) {
+        const base64String = response.assets[0].base64;
+        setImageUrl(`data:image/jpeg;base64,${base64String}`);
+      }
+    });
+  };
+
+  const toggleInterest = (interest) => {
+    if (selectedInterests.includes(interest)) {
+      setSelectedInterests(selectedInterests.filter(item => item !== interest));
+    } else {
+      setSelectedInterests([...selectedInterests, interest]);
     }
   };
 
@@ -66,7 +109,8 @@ const ProfileEdit = ({ navigation }) => {
         bio,
         location,
         gender,
-        interests: interests ? interests.split(',').map(i => i.trim()) : [],
+        interests: selectedInterests,
+        imageUrl,
       };
 
       const result = await client.graphql({
@@ -98,6 +142,20 @@ const ProfileEdit = ({ navigation }) => {
         <View style={styles.container}>
           <Text style={styles.header}>Edit Your Profile</Text>
           
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Profile Photo</Text>
+            <TouchableOpacity style={styles.photoPicker} onPress={pickImage}>
+              {imageUrl ? (
+                <Image 
+                  source={{ uri: imageUrl }} 
+                  style={styles.profileImage}
+                />
+              ) : (
+                <Text style={styles.photoPickerText}>Tap to select photo</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Name</Text>
             <TextInput
@@ -196,13 +254,25 @@ const ProfileEdit = ({ navigation }) => {
           
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Interests</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. hiking, reading, cooking (comma-separated)"
-              value={interests}
-              onChangeText={setInterests}
-              placeholderTextColor="#999"
-            />
+            <View style={styles.interestsContainer}>
+              {availableInterests.map((interest) => (
+                <TouchableOpacity
+                  key={interest}
+                  style={[
+                    styles.interestBubble,
+                    selectedInterests.includes(interest) && styles.selectedInterestBubble
+                  ]}
+                  onPress={() => toggleInterest(interest)}
+                >
+                  <Text style={[
+                    styles.interestText,
+                    selectedInterests.includes(interest) && styles.selectedInterestText
+                  ]}>
+                    {interest}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
           
           <TouchableOpacity 
@@ -268,6 +338,25 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     paddingTop: 12,
   },
+  photoPicker: {
+    height: 150,
+    borderColor: '#ddd',
+    borderWidth: 1,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  profileImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  photoPickerText: {
+    color: '#999',
+    fontSize: 16,
+  },
   dropdownButton: {
     height: 50,
     borderColor: '#ddd',
@@ -323,6 +412,33 @@ const styles = StyleSheet.create({
   dropdownItemTextSelected: {
     color: '#4A90E2',
     fontWeight: '600',
+  },
+  interestsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  interestBubble: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  selectedInterestBubble: {
+    backgroundColor: '#4A90E2',
+    borderColor: '#4A90E2',
+  },
+  interestText: {
+    color: '#333',
+    fontSize: 14,
+  },
+  selectedInterestText: {
+    color: '#fff',
+    fontWeight: '500',
   },
   saveButton: {
     backgroundColor: '#4A90E2',

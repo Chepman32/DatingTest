@@ -47,7 +47,7 @@ const ProfileStackScreen = () => {
         options={{ title: 'Create Profile' }}
       />
       <ProfileStack.Screen 
-        name="ProfileEditing" 
+        name="ProfileEdit" 
         component={ProfileEdit} 
         options={{ title: 'Edit Profile' }}
       />
