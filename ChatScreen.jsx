@@ -13,157 +13,81 @@ import {
   SafeAreaView,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { getCurrentUser } from 'aws-amplify/auth';
+import { generateClient } from 'aws-amplify/api';
+import { messagesByConversationId, getConversation, getUser } from './src/graphql/queries';
+import { createMessage } from './src/graphql/mutations';
 
-// Sample data - in a real app, you'd fetch this from a backend
-const getSampleMessages = (matchId) => {
-  const now = new Date();
-  
-  // Create timestamps for messages
-  const getTime = (minutesAgo) => {
-    const time = new Date(now);
-    time.setMinutes(now.getMinutes() - minutesAgo);
-    return time.toISOString();
-  };
+const client = generateClient();
 
-  const messages = {
-    '1': [
-      { 
-        id: '1', 
-        text: 'Hey, how are you?', 
-        sender: 'match', 
-        timestamp: getTime(45),
-        read: true
-      },
-      { 
-        id: '2', 
-        text: 'I\'m good, thanks for asking! How about you?', 
-        sender: 'user', 
-        timestamp: getTime(44),
-        read: true
-      },
-      { 
-        id: '3', 
-        text: 'Pretty good! Just finished work. Any plans for the weekend?', 
-        sender: 'match', 
-        timestamp: getTime(42),
-        read: true
-      },
-      { 
-        id: '4', 
-        text: 'Thinking about hiking, weather permitting. Would you be interested?', 
-        sender: 'user', 
-        timestamp: getTime(40),
-        read: true
-      },
-      { 
-        id: '5', 
-        text: 'That sounds fun! I love hiking. Where were you thinking of going?', 
-        sender: 'match', 
-        timestamp: getTime(38),
-        read: true
-      },
-    ],
-    '2': [
-      { 
-        id: '1', 
-        text: 'Nice to match with you!', 
-        sender: 'match', 
-        timestamp: getTime(120),
-        read: true
-      },
-      { 
-        id: '2', 
-        text: 'Thanks! I liked your profile. What do you enjoy doing in your free time?', 
-        sender: 'user', 
-        timestamp: getTime(118),
-        read: true
-      },
-      { 
-        id: '3', 
-        text: 'I enjoy painting, reading, and going for walks in the park. How about you?', 
-        sender: 'match', 
-        timestamp: getTime(115),
-        read: true
-      },
-    ],
-    '3': [
-      { 
-        id: '1', 
-        text: 'What\'s your favorite movie?', 
-        sender: 'match', 
-        timestamp: getTime(1440), // 24 hours ago
-        read: true
-      },
-      { 
-        id: '2', 
-        text: 'I\'d have to say The Shawshank Redemption. It\'s a classic! What about you?', 
-        sender: 'user', 
-        timestamp: getTime(1435),
-        read: true
-      },
-      { 
-        id: '3', 
-        text: 'I love Inception! The concept is so fascinating.', 
-        sender: 'match', 
-        timestamp: getTime(1430),
-        read: true
-      },
-    ],
-  };
-
-  return messages[matchId] || [];
-};
-
-// Function to format timestamp
 const formatMessageTime = (timestamp) => {
   const messageDate = new Date(timestamp);
   const now = new Date();
-  
-  // Check if the message is from today
+
   if (messageDate.toDateString() === now.toDateString()) {
     return messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
-  
-  // Check if the message is from yesterday
+
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
   if (messageDate.toDateString() === yesterday.toDateString()) {
     return 'Yesterday';
   }
-  
-  // For older messages, show the date
+
   return messageDate.toLocaleDateString();
 };
 
 const ChatScreen = ({ route, navigation }) => {
-  const { matchId, matchName } = route.params;
+  const { conversationId, matchName } = route.params;
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [matchInfo, setMatchInfo] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
   const flatListRef = useRef(null);
 
-  // Fetch match info
   useEffect(() => {
-    // In a real app, you'd fetch this from your backend
-    const fetchMatchInfo = () => {
-      // Find the match in our sample data
-      const matchData = MATCHES_DATA.find(match => match.id === matchId);
-      setMatchInfo(matchData);
+    const fetchUserAndConversation = async () => {
+      try {
+        const { userId } = await getCurrentUser();
+        setCurrentUserId(userId);
+
+        const conversationData = await client.graphql({
+          query: getConversation,
+          variables: { id: conversationId },
+          authMode: 'userPool',
+        });
+        const conversation = conversationData.data?.getConversation;
+        if (!conversation) {
+          console.error('Conversation not found:', conversationId);
+          return;
+        }
+
+        const matchId = conversation.participants.find(id => id !== userId);
+        const matchData = await client.graphql({
+          query: getUser,
+          variables: { id: matchId },
+          authMode: 'userPool',
+        });
+        setMatchInfo(matchData.data?.getUser);
+      } catch (error) {
+        console.error('Error fetching conversation or match info:', error);
+      }
     };
 
-    fetchMatchInfo();
-  }, [matchId]);
+    fetchUserAndConversation();
+  }, [conversationId]);
 
-  // Fetch messages
   useEffect(() => {
     const fetchMessages = async () => {
       try {
-        // Simulate API call
         setIsLoading(true);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const fetchedMessages = getSampleMessages(matchId);
+        const messagesData = await client.graphql({
+          query: messagesByConversationId,
+          variables: { conversationId },
+          authMode: 'userPool',
+        });
+        const fetchedMessages = messagesData.data?.messagesByConversationId?.items || [];
         setMessages(fetchedMessages);
       } catch (error) {
         console.error('Error fetching messages:', error);
@@ -173,79 +97,56 @@ const ChatScreen = ({ route, navigation }) => {
     };
 
     fetchMessages();
-  }, [matchId]);
+  }, [conversationId]);
 
-  // Set up header with match name
   useEffect(() => {
     navigation.setOptions({
       title: matchName,
       headerRight: () => (
         <TouchableOpacity 
           style={styles.headerButton}
-          onPress={() => navigation.navigate('Profile', { matchId })}
+          onPress={() => navigation.navigate('Profile', { userId: matchInfo?.id })}
         >
           <Ionicons name="information-circle-outline" size={24} color="#007AFF" />
         </TouchableOpacity>
       ),
     });
-  }, [navigation, matchName, matchId]);
+  }, [navigation, matchName, matchInfo]);
 
-  // Function to send a new message
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (newMessage.trim() === '') return;
 
-    const newMessageObj = {
-      id: Date.now().toString(),
-      text: newMessage,
-      sender: 'user',
-      timestamp: new Date().toISOString(),
-      read: false,
-    };
-
-    setMessages(prevMessages => [...prevMessages, newMessageObj]);
-    setNewMessage('');
-
-    // Simulate a reply after a delay
-    setTimeout(() => {
-      const replyMessage = {
-        id: (Date.now() + 1).toString(),
-        text: getRandomReply(),
-        sender: 'match',
-        timestamp: new Date().toISOString(),
+    try {
+      const messageInput = {
+        conversationId,
+        senderId: currentUserId,
+        receiverId: matchInfo.id,
+        text: newMessage,
         read: false,
       };
-      setMessages(prevMessages => [...prevMessages, replyMessage]);
-    }, 1500);
+      const createMessageResponse = await client.graphql({
+        query: createMessage,
+        variables: { input: messageInput },
+        authMode: 'userPool',
+      });
+      const newMessageObj = createMessageResponse.data.createMessage;
+      setMessages(prevMessages => [...prevMessages, newMessageObj]);
+      setNewMessage('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
   };
 
-  // Function to get a random reply
-  const getRandomReply = () => {
-    const replies = [
-      "That's interesting!",
-      "Tell me more about that.",
-      "I see what you mean.",
-      "That sounds fun!",
-      "I'd like to hear more about that.",
-      "Have you always felt that way?",
-      "What else do you enjoy?",
-      "That's a great point!",
-      "I hadn't thought of it that way before.",
-      "You have great taste!",
-    ];
-    return replies[Math.floor(Math.random() * replies.length)];
-  };
-
-  // Render each message
   const renderMessage = ({ item }) => {
-    const isUserMessage = item.sender === 'user';
-    
+    const isUserMessage = item.senderId === currentUserId;
+
     return (
       <View style={[
         styles.messageContainer,
         isUserMessage ? styles.userMessageContainer : styles.matchMessageContainer
       ]}>
         {!isUserMessage && matchInfo && (
-          <Image source={{ uri: matchInfo.avatar }} style={styles.messageAvatar} />
+          <Image source={{ uri: matchInfo.imageUrl }} style={styles.messageAvatar} />
         )}
         
         <View style={[
@@ -256,17 +157,16 @@ const ChatScreen = ({ route, navigation }) => {
         </View>
         
         <Text style={styles.messageTime}>
-          {formatMessageTime(item.timestamp)}
+          {formatMessageTime(item.createdAt)}
         </Text>
       </View>
     );
   };
 
-  // Date header for messages
   const renderDateHeader = () => {
     if (messages.length === 0) return null;
     
-    const firstMessageDate = new Date(messages[0].timestamp);
+    const firstMessageDate = new Date(messages[0].createdAt);
     const formattedDate = firstMessageDate.toLocaleDateString(undefined, {
       weekday: 'long',
       month: 'long',
@@ -331,31 +231,6 @@ const ChatScreen = ({ route, navigation }) => {
   );
 };
 
-// Sample data for matches (same as in MatchesScreen)
-const MATCHES_DATA = [
-  {
-    id: '1',
-    name: 'Alex Johnson',
-    lastMessage: 'Hey, how are you?',
-    time: '2:30 PM',
-    avatar: 'https://randomuser.me/api/portraits/men/1.jpg',
-  },
-  {
-    id: '2',
-    name: 'Sarah Williams',
-    lastMessage: 'Nice to match with you!',
-    time: '1:15 PM',
-    avatar: 'https://randomuser.me/api/portraits/women/2.jpg',
-  },
-  {
-    id: '3',
-    name: 'Mike Thompson',
-    lastMessage: "What is your favorite movie?",
-    time: 'Yesterday',
-    avatar: 'https://randomuser.me/api/portraits/men/3.jpg',
-  },
-];
-
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -410,12 +285,6 @@ const styles = StyleSheet.create({
   messageText: {
     fontSize: 16,
     color: '#000',
-  },
-  userMessageText: {
-    color: '#FFFFFF',
-  },
-  matchMessageText: {
-    color: '#000000',
   },
   messageTime: {
     fontSize: 10,

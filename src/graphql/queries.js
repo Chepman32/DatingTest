@@ -69,9 +69,9 @@ export const listUsers = /* GraphQL */ `
     }
   }
 `;
-export const getMatch = /* GraphQL */ `
-  query GetMatch($id: ID!) {
-    getMatch(id: $id) {
+export const getLike = /* GraphQL */ `
+  query GetLike($id: ID!) {
+    getLike(id: $id) {
       id
       likerId
       likeeId
@@ -107,7 +107,7 @@ export const getMatch = /* GraphQL */ `
         owner
         __typename
       }
-      matched
+      isMatched
       matchedDate
       conversationId
       conversation {
@@ -116,7 +116,7 @@ export const getMatch = /* GraphQL */ `
         lastMessageText
         lastMessageSentAt
         lastMessageSenderId
-        matchId
+        likeId
         createdAt
         updatedAt
         owner
@@ -129,18 +129,18 @@ export const getMatch = /* GraphQL */ `
     }
   }
 `;
-export const listMatches = /* GraphQL */ `
-  query ListMatches(
-    $filter: ModelMatchFilterInput
+export const listLikes = /* GraphQL */ `
+  query ListLikes(
+    $filter: ModelLikeFilterInput
     $limit: Int
     $nextToken: String
   ) {
-    listMatches(filter: $filter, limit: $limit, nextToken: $nextToken) {
+    listLikes(filter: $filter, limit: $limit, nextToken: $nextToken) {
       items {
         id
         likerId
         likeeId
-        matched
+        isMatched
         matchedDate
         conversationId
         createdAt
@@ -153,15 +153,15 @@ export const listMatches = /* GraphQL */ `
     }
   }
 `;
-export const matchesByLikerId = /* GraphQL */ `
-  query MatchesByLikerId(
+export const likesByLikerId = /* GraphQL */ `
+  query LikesByLikerId(
     $likerId: ID!
     $sortDirection: ModelSortDirection
-    $filter: ModelMatchFilterInput
+    $filter: ModelLikeFilterInput
     $limit: Int
     $nextToken: String
   ) {
-    matchesByLikerId(
+    likesByLikerId(
       likerId: $likerId
       sortDirection: $sortDirection
       filter: $filter
@@ -172,7 +172,7 @@ export const matchesByLikerId = /* GraphQL */ `
         id
         likerId
         likeeId
-        matched
+        isMatched
         matchedDate
         conversationId
         createdAt
@@ -185,15 +185,15 @@ export const matchesByLikerId = /* GraphQL */ `
     }
   }
 `;
-export const matchesByLikeeId = /* GraphQL */ `
-  query MatchesByLikeeId(
+export const likesByLikeeId = /* GraphQL */ `
+  query LikesByLikeeId(
     $likeeId: ID!
     $sortDirection: ModelSortDirection
-    $filter: ModelMatchFilterInput
+    $filter: ModelLikeFilterInput
     $limit: Int
     $nextToken: String
   ) {
-    matchesByLikeeId(
+    likesByLikeeId(
       likeeId: $likeeId
       sortDirection: $sortDirection
       filter: $filter
@@ -204,7 +204,7 @@ export const matchesByLikeeId = /* GraphQL */ `
         id
         likerId
         likeeId
-        matched
+        isMatched
         matchedDate
         conversationId
         createdAt
@@ -233,12 +233,12 @@ export const getConversation = /* GraphQL */ `
         nextToken
         __typename
       }
-      matchId
-      match {
+      likeId
+      like {
         id
         likerId
         likeeId
-        matched
+        isMatched
         matchedDate
         conversationId
         createdAt
@@ -266,7 +266,7 @@ export const listConversations = /* GraphQL */ `
         lastMessageText
         lastMessageSentAt
         lastMessageSenderId
-        matchId
+        likeId
         createdAt
         updatedAt
         owner
@@ -323,7 +323,7 @@ export const getMessage = /* GraphQL */ `
         lastMessageText
         lastMessageSentAt
         lastMessageSenderId
-        matchId
+        likeId
         createdAt
         updatedAt
         owner
@@ -490,7 +490,7 @@ export const getUserConversations = /* GraphQL */ `
         lastMessageText
         lastMessageSentAt
         lastMessageSenderId
-        matchId
+        likeId
         createdAt
         updatedAt
         owner

@@ -15,11 +15,13 @@ const ProfileEdit = ({ navigation }) => {
   const [location, setLocation] = useState('');
   const [gender, setGender] = useState('MALE');
   const [selectedInterests, setSelectedInterests] = useState([]);
+  const [lookingFor, setLookingFor] = useState([]);
   const [imageUrl, setImageUrl] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isProfileUpdated, setIsProfileUpdated] = useState(false);
-  const [dropdownVisible, setDropdownVisible] = useState(false);
-  
+  const [genderDropdownVisible, setGenderDropdownVisible] = useState(false);
+  const [lookingForDropdownVisible, setLookingForDropdownVisible] = useState(false);
+
   const genderOptions = [
     { label: 'Male', value: 'MALE' },
     { label: 'Female', value: 'FEMALE' },
@@ -27,8 +29,13 @@ const ProfileEdit = ({ navigation }) => {
     { label: 'Other', value: 'OTHER' }
   ];
 
+  const lookingForOptions = [
+    { label: 'FEMALE', value: 'FEMALE' },
+    { label: 'MALE', value: 'MALE' },
+  ];
+
   const availableInterests = [
-    'Hiking', 'Reading', 'Cooking', 'Gaming', 'Traveling', 
+    'Hiking', 'Reading', 'Cooking', 'Gaming', 'Traveling',
     'Photography', 'Music', 'Sports', 'Art', 'Technology',
     'Movies', 'Fitness', 'Writing', 'Dancing', 'Gardening'
   ];
@@ -55,6 +62,7 @@ const ProfileEdit = ({ navigation }) => {
         setLocation(user.location || '');
         setGender(user.gender || 'MALE');
         setSelectedInterests(user.interests || []);
+        setLookingFor(user.lookingFor || []);
         setImageUrl(user.imageUrl || null);
       }
     } catch (error) {
@@ -96,6 +104,14 @@ const ProfileEdit = ({ navigation }) => {
     }
   };
 
+  const toggleLookingFor = (value) => {
+    if (lookingFor.includes(value)) {
+      setLookingFor(lookingFor.filter(item => item !== value));
+    } else {
+      setLookingFor([...lookingFor, value]);
+    }
+  };
+
   const handleSave = async () => {
     setIsLoading(true);
     setIsProfileUpdated(false);
@@ -110,6 +126,7 @@ const ProfileEdit = ({ navigation }) => {
         location,
         gender,
         interests: selectedInterests,
+        lookingFor,
         imageUrl,
       };
 
@@ -134,6 +151,13 @@ const ProfileEdit = ({ navigation }) => {
   const getSelectedGenderLabel = () => {
     const selected = genderOptions.find(option => option.value === gender);
     return selected ? selected.label : 'Select Gender';
+  };
+
+  const getLookingForLabel = () => {
+    if (lookingFor.length === 0) return 'What are you looking for?';
+    return lookingFor
+      .map(value => lookingForOptions.find(opt => opt.value === value)?.label)
+      .join(', ');
   };
 
   return (
@@ -207,22 +231,22 @@ const ProfileEdit = ({ navigation }) => {
             <Text style={styles.label}>Gender</Text>
             <TouchableOpacity 
               style={styles.dropdownButton}
-              onPress={() => setDropdownVisible(true)}
+              onPress={() => setGenderDropdownVisible(true)}
             >
               <Text style={styles.dropdownButtonText}>{getSelectedGenderLabel()}</Text>
               <Text style={styles.dropdownIcon}>▼</Text>
             </TouchableOpacity>
             
             <Modal
-              visible={dropdownVisible}
+              visible={genderDropdownVisible}
               transparent={true}
               animationType="fade"
-              onRequestClose={() => setDropdownVisible(false)}
+              onRequestClose={() => setGenderDropdownVisible(false)}
             >
               <TouchableOpacity 
                 style={styles.modalOverlay}
                 activeOpacity={1}
-                onPress={() => setDropdownVisible(false)}
+                onPress={() => setGenderDropdownVisible(false)}
               >
                 <View style={styles.dropdownModal}>
                   <View style={styles.dropdown}>
@@ -235,12 +259,58 @@ const ProfileEdit = ({ navigation }) => {
                         ]}
                         onPress={() => {
                           setGender(option.value);
-                          setDropdownVisible(false);
+                          setGenderDropdownVisible(false);
                         }}
                       >
                         <Text style={[
                           styles.dropdownItemText,
                           gender === option.value && styles.dropdownItemTextSelected
+                        ]}>
+                          {option.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              </TouchableOpacity>
+            </Modal>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Looking For</Text>
+            <TouchableOpacity 
+              style={styles.dropdownButton}
+              onPress={() => setLookingForDropdownVisible(true)}
+            >
+              <Text style={styles.dropdownButtonText}>{getLookingForLabel()}</Text>
+              <Text style={styles.dropdownIcon}>▼</Text>
+            </TouchableOpacity>
+            
+            <Modal
+              visible={lookingForDropdownVisible}
+              transparent={true}
+              animationType="fade"
+              onRequestClose={() => setLookingForDropdownVisible(false)}
+            >
+              <TouchableOpacity 
+                style={styles.modalOverlay}
+                activeOpacity={1}
+                onPress={() => setLookingForDropdownVisible(false)}
+              >
+                <View style={styles.dropdownModal}>
+                  <View style={styles.dropdown}>
+                    {lookingForOptions.map((option) => (
+                      <TouchableOpacity
+                        key={option.value}
+                        style={[
+                          styles.dropdownItem,
+                          lookingFor.includes(option.value) && styles.dropdownItemSelected
+                        ]}
+                        onPress={() => toggleLookingFor(option.value)}
+                      >
+                        <Text style={[
+                          styles.dropdownItemText,
+                          lookingFor.includes(option.value) && styles.dropdownItemTextSelected
                         ]}>
                           {option.label}
                         </Text>

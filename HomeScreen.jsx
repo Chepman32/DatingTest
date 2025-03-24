@@ -1,115 +1,161 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { StyleSheet, View, Text, Image, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { StyleSheet, View, Text, Image, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
 import Swiper from 'react-native-deck-swiper';
-import { API, Auth, graphqlOperation } from 'aws-amplify';
+import { Auth } from 'aws-amplify';
 import { getCurrentUser } from 'aws-amplify/auth';
-import { getUser, listUsers, matchesByLikerId, matchesByLikeeId } from './src/graphql/queries';
-import { createMatch, updateMatch } from './src/graphql/mutations';
+import { getUser, listUsers, likesByLikerId, likesByLikeeId } from './src/graphql/queries';
+import { createLike, updateLike } from './src/graphql/mutations';
 import { generateClient } from 'aws-amplify/api';
+import * as queries from './src/graphql/queries';
 
 const client = generateClient();
 
 const { height: windowHeight } = Dimensions.get('window');
 
-const HomeScreen = () => {
-  const [users, setUsers] = useState([]);
+const HomeScreen = ({ navigation }) => {
+  const [usersList, setUsersList] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [sentLikeeIds, setSentLikeeIds] = useState([]);
   const [receivedLikerIds, setReceivedLikerIds] = useState([]);
-  const [usersList, setUsersList] = useState([]);
+  const [listLoading, setListLoading] = useState(true);
   const swiperRef = useRef(null);
 
-  const fetchUsers = async () => {
-    const usersData = await client.graphql({ query: listUsers });
-        console.log('Users data:', usersData.data.listUsers.items);
-        setUsersList(usersData.data.listUsers.items);
-        return usersData.data.listUsers.items
-  }
+  const fetchData = useCallback(async () => {
+    setListLoading(true);
+    try {
+      const { userId } = await getCurrentUser();
+      const currentUserId = userId;
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const { username, userId, signInDetails } = await getCurrentUser();
-        console.log("Username:", username);
-        console.log("User ID:", userId);
-        console.log("Sign-in details:", signInDetails);
-        const userInfo = signInDetails;
-        const currentUserId = userId
-
-        // Fetch current user details
-        const userData = await client.graphql({ query: getUser, variables: { id: currentUserId } });
-        const fetchedUser = userData.data.getUser;
-        setCurrentUser(fetchedUser);
-
-        // Fetch sent likes (matches where current user is the liker)
-        const sentLikesData = await API.graphql(graphqlOperation(matchesByLikerId, { likerId: currentUserId }));
-        const sentLikes = sentLikesData.data.matchesByLikerId.items;
-        const likeeIds = sentLikes.map(match => match.likeeId);
-        setSentLikeeIds(likeeIds);
-
-        // Fetch received likes (matches where current user is the likee)
-        const receivedLikesData = await API.graphql(graphqlOperation(matchesByLikeeId, { likeeId: currentUserId }));
-        const receivedLikes = receivedLikesData.data.matchesByLikeeId.items;
-        const likerIds = receivedLikes.map(match => match.likerId);
-        setReceivedLikerIds(likerIds);
-
-        // Fetch potential matches
-        const filter = {
-          lookingFor: { contains: fetchedUser.gender },
-          id: { ne: currentUserId }
-        };
-        const usersData = await client.graphql({ query: listUsers });
-        console.log('Users data:', usersData);
-        const potentialMatches = usersData.data.listUsers.items.filter(user =>
-          fetchedUser.lookingFor.includes(user.gender) && !likeeIds.includes(user.id)
-        );
-        setUsers(potentialMatches);
-      } catch (error) {
-        console.log('Error fetching data:', error);
+      const existingUser = await client.graphql({
+        query: queries.getUser,
+        variables: { id: currentUserId },
+        authMode: 'userPool',
+      });
+      console.log('existingUser GraphQL response:', existingUser);
+      if (!existingUser.data.getUser) {
+        navigation.navigate('ProfileCreation');
+        return;
       }
-    };
+      setCurrentUser(existingUser.data.getUser);
+      console.log('Current user:', existingUser.data.getUser);
+
+      const sentLikesData = await client.graphql({
+        query: likesByLikerId,
+        variables: { likerId: currentUserId },
+        authMode: 'userPool',
+      });
+      if (sentLikesData.errors) {
+        console.error('Errors in likesByLikerId:', sentLikesData.errors);
+      }
+      const sentLikes = sentLikesData.data?.likesByLikerId?.items || [];
+      const likeeIds = sentLikes.map(like => like.likeeId);
+      setSentLikeeIds(likeeIds);
+      console.log('Sent likes:', sentLikes);
+
+      const receivedLikesData = await client.graphql({
+        query: likesByLikeeId,
+        variables: { likeeId: currentUserId },
+        authMode: 'userPool',
+      });
+      if (receivedLikesData.errors) {
+        console.error('Errors in likesByLikeeId:', receivedLikesData.errors);
+      }
+      const receivedLikes = receivedLikesData.data?.likesByLikeeId?.items || [];
+      const likerIds = receivedLikes.map(like => like.likerId);
+      setReceivedLikerIds(likerIds);
+      console.log('Received likes:', receivedLikes);
+
+      const usersData = await client.graphql({ query: listUsers, authMode: 'userPool' });
+      const potentialMatches = usersData.data.listUsers.items.filter(user => existingUser.data.getUser.lookingFor.includes(user.gender)
+      );
+      console.log("genders:", usersData.data.listUsers.items.filter(user => existingUser.data.getUser.lookingFor.includes(user.gender)));
+      setUsersList(potentialMatches);
+      console.log('Fetched users:', potentialMatches);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+    setListLoading(false);
+  }, [navigation]);
+
+  useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const handleLike = async (index) => {
-    const swipedUser = users[index];
+    console.log('handleLike called with index:', index);
+    if (!usersList[index]) {
+      console.error('No user found at index:', index, 'Users list:', usersList);
+      return;
+    }
+    const swipedUser = usersList[index];
     const swipedUserId = swipedUser.id;
+    console.log('Swiped user ID:', swipedUserId, 'Current user ID:', currentUser?.id);
+
+    if (!currentUser?.id || !swipedUserId) {
+      console.error('Missing IDs - Current user ID:', currentUser?.id, 'Swiped user ID:', swipedUserId);
+      return;
+    }
+
     try {
-      const matchInput = {
+      const likeInput = {
         likerId: currentUser.id,
         likeeId: swipedUserId,
-        matched: false,
+        isMatched: false,
       };
-      const createMatchResponse = await API.graphql(graphqlOperation(createMatch, { input: matchInput }));
-      const createdMatch = createMatchResponse.data.createMatch;
+      console.log('Creating like with input:', likeInput);
+      const createLikeResponse = await client.graphql({
+        query: createLike,
+        variables: { input: likeInput },
+        authMode: 'userPool',
+      });
+      if (createLikeResponse.errors) {
+        console.error('Errors in createLike:', createLikeResponse.errors);
+        return;
+      }
+      const createdLike = createLikeResponse.data.createLike;
+      console.log('Created like:', createdLike);
 
-      // Check if the swiped user has already liked the current user
       if (receivedLikerIds.includes(swipedUserId)) {
-        const existingMatchData = await API.graphql(graphqlOperation(matchesByLikeeId, { likeeId: currentUser.id }));
-        const existingMatch = existingMatchData.data.matchesByLikeeId.items.find(
-          match => match.likerId === swipedUserId
+        console.log('Checking for mutual like with:', swipedUserId);
+        const existingLikeData = await client.graphql({
+          query: likesByLikeeId,
+          variables: { likeeId: currentUser.id },
+          authMode: 'userPool',
+        });
+        if (existingLikeData.errors) {
+          console.error('Errors in likesByLikeeId for mutual check:', existingLikeData.errors);
+          return;
+        }
+        const existingLike = existingLikeData.data.likesByLikeeId.items.find(
+          like => like.likerId === swipedUserId
         );
-        if (existingMatch) {
-          await client.graphql({ query: updateMatch, variables: { input: { id: existingMatch.id, matched: true } } });
-          await client.graphql({ query: updateMatch, variables: { input: { id: createdMatch.id, matched: true } } });
+        if (existingLike) {
+          console.log('Found mutual like, updating:', existingLike.id);
+          await client.graphql({
+            query: updateLike,
+            variables: { input: { id: existingLike.id, isMatched: true } },
+            authMode: 'userPool',
+          });
+          await client.graphql({
+            query: updateLike,
+            variables: { input: { id: createdLike.id, isMatched: true } },
+            authMode: 'userPool',
+          });
+          console.log('Updated both likes to matched');
         }
       }
 
-      // Update local state to prevent re-showing this user
       setSentLikeeIds(prev => [...prev, swipedUserId]);
-      setUsers(prev => prev.filter(user => user.id !== swipedUserId));
+      setUsersList(prev => prev.filter(user => user.id !== swipedUserId));
     } catch (error) {
       console.error('Error handling like:', error);
     }
   };
 
   const handleDislike = (index) => {
-    const swipedUser = users[index];
-    setUsers(prev => prev.filter(user => user.id !== swipedUser.id));
+    console.log('handleDislike called with index:', index);
+    const swipedUser = usersList[index];
+    setUsersList(prev => prev.filter(user => user.id !== swipedUser.id));
   };
 
   const renderCard = (card) => {
@@ -122,49 +168,49 @@ const HomeScreen = () => {
         </View>
       </View>
     );
-  }
+  };
 
   return (
     <View style={styles.container}>
-      {
-        usersList.length > 0 ? (
-          <Swiper
-        ref={swiperRef}
-        cards={usersList}
-        renderCard={renderCard}
-        cardIndex={0}
-        backgroundColor="#f0f0f0"
-        stackSize={3}
-        cardVerticalMargin={0}
-        cardHorizontalMargin={0}
-        cardStyle={{ height: windowHeight * 0.85, width: '100%' }}
-        overlayLabels={{
-          left: {
-            title: 'Nope',
-            style: {
-              label: { backgroundColor: 'transparent', borderColor: '#E5566D', color: '#E5566D', fontSize: 30, fontWeight: 'bold' },
-              wrapper: { flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-start', marginTop: 20, marginLeft: -20 },
+      {usersList.length > 0 ? (
+        <Swiper
+          ref={swiperRef}
+          cards={usersList}
+          renderCard={renderCard}
+          cardIndex={0}
+          backgroundColor="#f0f0f0"
+          stackSize={3}
+          cardVerticalMargin={0}
+          cardHorizontalMargin={0}
+          cardStyle={{ height: windowHeight * 0.85, width: '100%' }}
+          overlayLabels={{
+            left: {
+              title: 'Nope',
+              style: {
+                label: { backgroundColor: 'transparent', borderColor: '#E5566D', color: '#E5566D', fontSize: 30, fontWeight: 'bold' },
+                wrapper: { flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-start', marginTop: 20, marginLeft: -20 },
+              },
             },
-          },
-          right: {
-            title: 'Like',
-            style: {
-              label: { backgroundColor: 'transparent', borderColor: '#4CCC93', color: '#4CCC93', fontSize: 30, fontWeight: 'bold' },
-              wrapper: { flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-start', marginTop: 20, marginLeft: 20 },
+            right: {
+              title: 'Like',
+              style: {
+                label: { backgroundColor: 'transparent', borderColor: '#4CCC93', color: '#4CCC93', fontSize: 30, fontWeight: 'bold' },
+                wrapper: { flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-start', marginTop: 20, marginLeft: 20 },
+              },
             },
-          },
-        }}
-        onSwipedRight={handleLike}
-        onSwipedLeft={handleDislike}
-      />
-        )
-        :
-        (
-          <View style={styles.noMatchesContainer}>
-            <Text style={styles.noMatchesText}>No matches found</Text>
-          </View>
-        )
-      }
+          }}
+          onSwipedRight={handleLike}
+          onSwipedLeft={handleDislike}
+        />
+      ) : (
+        <View style={styles.noMatchesContainer}>
+          {listLoading ? (
+            <ActivityIndicator size="large" color="#4CCC93" />
+          ) : (
+            <Text style={styles.noMatchesText}>No more potential matches</Text>
+          )}
+        </View>
+      )}
       <View style={styles.buttonContainer}>
         <TouchableOpacity style={styles.dislikeButton} onPress={() => swiperRef.current?.swipeLeft()}>
           <Text style={styles.buttonText}>Dislike</Text>
@@ -181,6 +227,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f0f0f0',
+  },
+  noMatchesContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noMatchesText: {
+    fontSize: 20,
+    color: '#999',
   },
   card: {
     height: windowHeight * 0.85,
@@ -233,11 +288,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
-  noMatchesText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-  }
 });
 
 export default HomeScreen;

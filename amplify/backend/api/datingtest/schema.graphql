@@ -15,15 +15,14 @@ type User @model
   lastActive: AWSDateTime
   createdAt: AWSDateTime
   updatedAt: AWSDateTime
-  # Relationships
-  sentLikes: [Match] @hasMany(indexName: "byLiker", fields: ["id"])
-  receivedLikes: [Match] @hasMany(indexName: "byLikee", fields: ["id"])
+  sentLikes: [Like] @hasMany(indexName: "byLiker", fields: ["id"])
+  receivedLikes: [Like] @hasMany(indexName: "byLikee", fields: ["id"])
   sentMessages: [Message] @hasMany(indexName: "bySender", fields: ["id"])
   receivedMessages: [Message] @hasMany(indexName: "byReceiver", fields: ["id"])
   conversations: [Conversation] @manyToMany(relationName: "UserConversations")
 }
 
-type Match @model
+type Like @model
 @auth(rules: [
   { allow: owner },
   { allow: private, operations: [read] }
@@ -33,7 +32,7 @@ type Match @model
   likeeId: ID! @index(name: "byLikee")
   liker: User! @belongsTo(fields: ["likerId"])
   likee: User! @belongsTo(fields: ["likeeId"])
-  matched: Boolean
+  isMatched: Boolean
   matchedDate: AWSDateTime
   conversationId: ID
   conversation: Conversation @belongsTo(fields: ["conversationId"])
@@ -53,8 +52,8 @@ type Conversation @model
   lastMessageSentAt: AWSDateTime
   lastMessageSenderId: ID
   messages: [Message] @hasMany(indexName: "byConversation", fields: ["id"])
-  matchId: ID
-  match: Match @hasOne(fields: ["matchId"])
+  likeId: ID
+  like: Like @hasOne(fields: ["likeId"])
   createdAt: AWSDateTime
   updatedAt: AWSDateTime
 }

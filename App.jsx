@@ -15,7 +15,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import HomeScreen from './HomeScreen';
 import ProfileScreen from './ProfileScreen';
 import ProfileCreationScreen from './ProfileCreationScreen';
-import MatchesScreen from './MatchesScreen';
+import LikesScreen from './LikesScreen';
 import ChatScreen from './ChatScreen';
 import { Image } from 'react-native';
 import { getCurrentUser } from 'aws-amplify/auth';
@@ -29,7 +29,7 @@ const client = generateClient({
 
 const Tab = createBottomTabNavigator();
 const ProfileStack = createStackNavigator();
-const MatchesStack = createStackNavigator();
+const LikesStack = createStackNavigator();
 const MainStack = createStackNavigator();
 
 const ProfileStackScreen = () => {
@@ -55,19 +55,24 @@ const ProfileStackScreen = () => {
   );
 };
 
-const MatchesStackScreen = () => {
+const LikesStackScreen = () => {
   return (
-    <MatchesStack.Navigator>
-      <MatchesStack.Screen 
-        name="MatchesList" 
-        component={MatchesScreen} 
+    <LikesStack.Navigator>
+      <LikesStack.Screen 
+        name="LikesList"
+        component={LikesScreen} 
         options={{ headerShown: false }}
       />
-      <MatchesStack.Screen 
+      <LikesStack.Screen 
         name="Chat" 
         component={ChatScreen}
       />
-    </MatchesStack.Navigator>
+      <LikesStack.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{ title: 'User Profile' }}
+      />
+    </LikesStack.Navigator>
   );
 };
 
@@ -82,7 +87,7 @@ const MainTabNavigator = () => {
           }
           if (route.name === 'Home') {
             return <Image source={home} style={{ width: 30, height: 30 }} />;
-          } else if (route.name === 'MatchesTab') {
+          } else if (route.name === 'LikesTab') {
             return <Image source={match} style={{ width: 30, height: 30 }} />;
           } else if (route.name === 'ProfileTab') {
             return <Image source={profile} style={{ width: 30, height: 30 }} />;
@@ -99,9 +104,9 @@ const MainTabNavigator = () => {
         options={{ title: 'Home' }}
       />
       <Tab.Screen 
-        name="MatchesTab" 
-        component={MatchesStackScreen} 
-        options={{ title: 'Matches', headerShown: false }}
+        name="LikesTab"
+        component={LikesStackScreen} 
+        options={{ title: 'Likes', headerShown: false }}
       />
       <Tab.Screen 
         name="ProfileTab" 

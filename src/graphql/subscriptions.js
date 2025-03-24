@@ -130,12 +130,12 @@ export const onDeleteUser = /* GraphQL */ `
     }
   }
 `;
-export const onCreateMatch = /* GraphQL */ `
-  subscription OnCreateMatch(
-    $filter: ModelSubscriptionMatchFilterInput
+export const onCreateLike = /* GraphQL */ `
+  subscription OnCreateLike(
+    $filter: ModelSubscriptionLikeFilterInput
     $owner: String
   ) {
-    onCreateMatch(filter: $filter, owner: $owner) {
+    onCreateLike(filter: $filter, owner: $owner) {
       id
       likerId
       likeeId
@@ -171,7 +171,7 @@ export const onCreateMatch = /* GraphQL */ `
         owner
         __typename
       }
-      matched
+      isMatched
       matchedDate
       conversationId
       conversation {
@@ -180,7 +180,7 @@ export const onCreateMatch = /* GraphQL */ `
         lastMessageText
         lastMessageSentAt
         lastMessageSenderId
-        matchId
+        likeId
         createdAt
         updatedAt
         owner
@@ -193,12 +193,12 @@ export const onCreateMatch = /* GraphQL */ `
     }
   }
 `;
-export const onUpdateMatch = /* GraphQL */ `
-  subscription OnUpdateMatch(
-    $filter: ModelSubscriptionMatchFilterInput
+export const onUpdateLike = /* GraphQL */ `
+  subscription OnUpdateLike(
+    $filter: ModelSubscriptionLikeFilterInput
     $owner: String
   ) {
-    onUpdateMatch(filter: $filter, owner: $owner) {
+    onUpdateLike(filter: $filter, owner: $owner) {
       id
       likerId
       likeeId
@@ -234,7 +234,7 @@ export const onUpdateMatch = /* GraphQL */ `
         owner
         __typename
       }
-      matched
+      isMatched
       matchedDate
       conversationId
       conversation {
@@ -243,7 +243,7 @@ export const onUpdateMatch = /* GraphQL */ `
         lastMessageText
         lastMessageSentAt
         lastMessageSenderId
-        matchId
+        likeId
         createdAt
         updatedAt
         owner
@@ -256,12 +256,12 @@ export const onUpdateMatch = /* GraphQL */ `
     }
   }
 `;
-export const onDeleteMatch = /* GraphQL */ `
-  subscription OnDeleteMatch(
-    $filter: ModelSubscriptionMatchFilterInput
+export const onDeleteLike = /* GraphQL */ `
+  subscription OnDeleteLike(
+    $filter: ModelSubscriptionLikeFilterInput
     $owner: String
   ) {
-    onDeleteMatch(filter: $filter, owner: $owner) {
+    onDeleteLike(filter: $filter, owner: $owner) {
       id
       likerId
       likeeId
@@ -297,7 +297,7 @@ export const onDeleteMatch = /* GraphQL */ `
         owner
         __typename
       }
-      matched
+      isMatched
       matchedDate
       conversationId
       conversation {
@@ -306,7 +306,7 @@ export const onDeleteMatch = /* GraphQL */ `
         lastMessageText
         lastMessageSentAt
         lastMessageSenderId
-        matchId
+        likeId
         createdAt
         updatedAt
         owner
@@ -338,12 +338,12 @@ export const onCreateConversation = /* GraphQL */ `
         nextToken
         __typename
       }
-      matchId
-      match {
+      likeId
+      like {
         id
         likerId
         likeeId
-        matched
+        isMatched
         matchedDate
         conversationId
         createdAt
@@ -377,12 +377,12 @@ export const onUpdateConversation = /* GraphQL */ `
         nextToken
         __typename
       }
-      matchId
-      match {
+      likeId
+      like {
         id
         likerId
         likeeId
-        matched
+        isMatched
         matchedDate
         conversationId
         createdAt
@@ -416,12 +416,12 @@ export const onDeleteConversation = /* GraphQL */ `
         nextToken
         __typename
       }
-      matchId
-      match {
+      likeId
+      like {
         id
         likerId
         likeeId
-        matched
+        isMatched
         matchedDate
         conversationId
         createdAt
@@ -485,7 +485,7 @@ export const onCreateMessage = /* GraphQL */ `
         lastMessageText
         lastMessageSentAt
         lastMessageSenderId
-        matchId
+        likeId
         createdAt
         updatedAt
         owner
@@ -549,7 +549,7 @@ export const onUpdateMessage = /* GraphQL */ `
         lastMessageText
         lastMessageSentAt
         lastMessageSenderId
-        matchId
+        likeId
         createdAt
         updatedAt
         owner
@@ -613,7 +613,7 @@ export const onDeleteMessage = /* GraphQL */ `
         lastMessageText
         lastMessageSentAt
         lastMessageSenderId
-        matchId
+        likeId
         createdAt
         updatedAt
         owner
@@ -659,7 +659,7 @@ export const onCreateUserConversations = /* GraphQL */ `
         lastMessageText
         lastMessageSentAt
         lastMessageSenderId
-        matchId
+        likeId
         createdAt
         updatedAt
         owner
@@ -703,7 +703,7 @@ export const onUpdateUserConversations = /* GraphQL */ `
         lastMessageText
         lastMessageSentAt
         lastMessageSenderId
-        matchId
+        likeId
         createdAt
         updatedAt
         owner
@@ -747,7 +747,7 @@ export const onDeleteUserConversations = /* GraphQL */ `
         lastMessageText
         lastMessageSentAt
         lastMessageSenderId
-        matchId
+        likeId
         createdAt
         updatedAt
         owner
