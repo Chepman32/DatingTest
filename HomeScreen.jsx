@@ -67,6 +67,8 @@ const HomeScreen = ({ navigation }) => {
 
       const usersData = await client.graphql({ query: listUsers, authMode: 'userPool' });
       const potentialMatches = usersData.data.listUsers.items.filter(user => existingUser.data.getUser.lookingFor.includes(user.gender)
+        && !sentLikes.some(like => like.likeeId === user.id)
+        && !receivedLikes.some(like => like.likerId === user.id)
       );
       console.log("genders:", usersData.data.listUsers.items.filter(user => existingUser.data.getUser.lookingFor.includes(user.gender)));
       setUsersList(potentialMatches);
@@ -155,11 +157,10 @@ const HomeScreen = ({ navigation }) => {
   const handleDislike = (index) => {
     console.log('handleDislike called with index:', index);
     const swipedUser = usersList[index];
-    setUsersList(prev => prev.filter(user => user.id !== swipedUser.id));
+    setUsersList(prev => prev.filter(user => user?.id !== swipedUser?.id));
   };
 
   const renderCard = (card) => {
-    console.log('Rendering card:', card);
     return (
       <View style={styles.card}>
         <Image source={{ uri: card?.imageUrl }} style={styles.image} />
@@ -187,14 +188,14 @@ const HomeScreen = ({ navigation }) => {
             left: {
               title: 'Nope',
               style: {
-                label: { backgroundColor: 'transparent', borderColor: '#E5566D', color: '#E5566D', fontSize: 30, fontWeight: 'bold' },
+                label: { backgroundColor: 'transparent', borderColor: '#E5566D', color: '#E5566D', fontSize: 36, fontWeight: 'bold', textalign: 'center' },
                 wrapper: { flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-start', marginTop: 20, marginLeft: -20 },
               },
             },
             right: {
               title: 'Like',
               style: {
-                label: { backgroundColor: 'transparent', borderColor: '#4CCC93', color: '#4CCC93', fontSize: 30, fontWeight: 'bold' },
+                label: { backgroundColor: 'transparent', borderColor: '#4CCC93', color: '#4CCC93', fontSize: 36, fontWeight: 'bold' },
                 wrapper: { flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-start', marginTop: 20, marginLeft: 20 },
               },
             },
