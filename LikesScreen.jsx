@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, ActivityIndicator } from 'react-native';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { generateClient } from 'aws-amplify/api';
-import { likesByLikerId, likesByLikeeId, getUser } from './src/graphql/queries';
+import { likesByLikerId, likesByLikeeId, getUser, getConversation } from './src/graphql/queries';
 import { deleteLike } from './src/graphql/mutations';
 
 const client = generateClient();
@@ -32,6 +32,7 @@ const LikesScreen = ({ navigation }) => {
 
         const enrichedSentLikes = [];
         for (let like of sentLikesList) {
+          // Fetch user data if needed
           if (!like.likee && like.likeeId) {
             const userData = await client.graphql({
               query: getUser,
@@ -40,6 +41,28 @@ const LikesScreen = ({ navigation }) => {
             });
             like.likee = userData.data?.getUser;
           }
+
+          // Fetch conversation data if this is a matched like with a conversation
+          if (like.isMatched && like.conversationId && !like.conversation) {
+            try {
+              console.log(`Fetching conversation data for like ${like.id} with conversationId ${like.conversationId}`);
+              const conversationData = await client.graphql({
+                query: getConversation,
+                variables: { id: like.conversationId },
+                authMode: 'userPool',
+              });
+              like.conversation = conversationData.data?.getConversation;
+              console.log(`Fetched conversation:`, like.conversation);
+            } catch (error) {
+              console.error(`Error fetching conversation for like ${like.id}:`, error);
+            }
+          }
+
+          // Log direct conversation data if it exists
+          if (like.directConversation) {
+            console.log(`Like ${like.id} has direct conversation:`, like.directConversation);
+          }
+
           if (like.likee) {
             enrichedSentLikes.push(like);
           } else {
@@ -67,6 +90,7 @@ const LikesScreen = ({ navigation }) => {
 
         const enrichedReceivedLikes = [];
         for (let like of receivedLikesList) {
+          // Fetch user data if needed
           if (!like.liker && like.likerId) {
             const userData = await client.graphql({
               query: getUser,
@@ -75,6 +99,28 @@ const LikesScreen = ({ navigation }) => {
             });
             like.liker = userData.data?.getUser;
           }
+
+          // Fetch conversation data if this is a matched like with a conversation
+          if (like.isMatched && like.conversationId && !like.conversation) {
+            try {
+              console.log(`Fetching conversation data for received like ${like.id} with conversationId ${like.conversationId}`);
+              const conversationData = await client.graphql({
+                query: getConversation,
+                variables: { id: like.conversationId },
+                authMode: 'userPool',
+              });
+              like.conversation = conversationData.data?.getConversation;
+              console.log(`Fetched conversation for received like:`, like.conversation);
+            } catch (error) {
+              console.error(`Error fetching conversation for received like ${like.id}:`, error);
+            }
+          }
+
+          // Log direct conversation data if it exists
+          if (like.directConversation) {
+            console.log(`Received like ${like.id} has direct conversation:`, like.directConversation);
+          }
+
           if (like.liker) {
             enrichedReceivedLikes.push(like);
           } else {
@@ -100,7 +146,7 @@ const LikesScreen = ({ navigation }) => {
 
   const renderLikeItem = ({ item, isSent }) => {
     const user = isSent ? item.likee : item.liker;
-    console.log('Rendering like item:', item);
+    console.log('Rendering like item:', JSON.stringify(item, null, 2));
 
     if (!user) {
       console.warn(`User data missing for like item: ${item.id}, isSent: ${isSent}`);
@@ -111,16 +157,64 @@ const LikesScreen = ({ navigation }) => {
       );
     }
 
-    const isMatched = item.isMatched;
-    const navigationTarget = isMatched && item.conversationId 
-      ? { screen: 'Chat', params: { conversationId: item.conversationId, matchName: user.name } }
-      : { screen: 'Profile', params: { userId: user.id } };
-    console.log(`Navigation decision for like ${item.id}: isMatched=${isMatched}, conversationId=${item.conversationId}, target=`, navigationTarget);
+    // Debug the item properties in detail
+    console.log(`Item details - id: ${item.id}, isMatched: ${item.isMatched}, conversationId: ${item.conversationId}`);
+
+    // Make sure we're using the correct boolean value for isMatched
+    // Some GraphQL responses might return it as a string or null
+    const isMatched = item.isMatched === true || item.isMatched === 'true';
+
+    // Check for different types of conversations
+    const hasRegularConversation = !!item.conversationId;
+    const hasDirectConversation = !!item.directConversation &&
+                                 Array.isArray(item.directConversation.messages) &&
+                                 item.directConversation.messages.length > 0;
+
+    // Determine navigation target based on conversation type
+    let navigationTarget;
+
+    if (isMatched && hasRegularConversation) {
+      // Navigate to regular chat if there's a conversationId
+      navigationTarget = {
+        screen: 'Chat',
+        params: {
+          conversationId: item.conversationId,
+          matchName: user.name
+        }
+      };
+    } else if (isMatched && hasDirectConversation) {
+      // Navigate to direct chat if there's a directConversation
+      navigationTarget = {
+        screen: 'DirectChat',
+        params: {
+          likeId: item.id,
+          matchName: user.name,
+          directConversation: item.directConversation,
+          otherUserId: user.id
+        }
+      };
+    } else {
+      // Default to profile view
+      navigationTarget = {
+        screen: 'Profile',
+        params: {
+          userId: user.id
+        }
+      };
+    }
+
+    console.log(`Navigation decision for like ${item.id}: isMatched=${isMatched}, hasRegularConversation=${hasRegularConversation}, hasDirectConversation=${hasDirectConversation}, conversationId=${item.conversationId}, target=`, JSON.stringify(navigationTarget));
 
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.likeItem}
-        onPress={() => navigation.navigate(navigationTarget.screen, navigationTarget.params)}
+        onPress={() => {
+          console.log(`Navigating to: ${navigationTarget.screen} with params:`, JSON.stringify(navigationTarget.params));
+          navigation.navigate("DirectChat", {
+            conversationId: item.conversationId,
+            matchName: user.name
+          })
+        }}
       >
         <Image 
           source={{ uri: user.imageUrl }} 
@@ -129,7 +223,15 @@ const LikesScreen = ({ navigation }) => {
         <View style={styles.likeInfo}>
           <Text style={styles.name}>{user.name}</Text>
           <Text style={styles.status}>
-            {isMatched ? 'Matched!' : isSent ? 'Like sent' : 'Liked you'}
+            {isMatched
+              ? (hasRegularConversation
+                 ? 'Matched! Tap to chat'
+                 : (hasDirectConversation
+                    ? 'Matched! Tap to view messages'
+                    : 'Matched!'))
+              : isSent
+                ? 'Like sent'
+                : 'Liked you'}
           </Text>
         </View>
         <Text style={styles.time}>

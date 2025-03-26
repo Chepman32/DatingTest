@@ -186,6 +186,12 @@ export const onCreateLike = /* GraphQL */ `
         owner
         __typename
       }
+      directConversation {
+        startDate
+        lastMessageDate
+        __typename
+      }
+      _directConversationString
       createdAt
       updatedAt
       owner
@@ -249,6 +255,12 @@ export const onUpdateLike = /* GraphQL */ `
         owner
         __typename
       }
+      directConversation {
+        startDate
+        lastMessageDate
+        __typename
+      }
+      _directConversationString
       createdAt
       updatedAt
       owner
@@ -312,6 +324,12 @@ export const onDeleteLike = /* GraphQL */ `
         owner
         __typename
       }
+      directConversation {
+        startDate
+        lastMessageDate
+        __typename
+      }
+      _directConversationString
       createdAt
       updatedAt
       owner
@@ -346,6 +364,7 @@ export const onCreateConversation = /* GraphQL */ `
         isMatched
         matchedDate
         conversationId
+        _directConversationString
         createdAt
         updatedAt
         owner
@@ -385,6 +404,7 @@ export const onUpdateConversation = /* GraphQL */ `
         isMatched
         matchedDate
         conversationId
+        _directConversationString
         createdAt
         updatedAt
         owner
@@ -424,6 +444,7 @@ export const onDeleteConversation = /* GraphQL */ `
         isMatched
         matchedDate
         conversationId
+        _directConversationString
         createdAt
         updatedAt
         owner

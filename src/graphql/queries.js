@@ -122,6 +122,12 @@ export const getLike = /* GraphQL */ `
         owner
         __typename
       }
+      directConversation {
+        startDate
+        lastMessageDate
+        __typename
+      }
+      _directConversationString
       createdAt
       updatedAt
       owner
@@ -143,6 +149,7 @@ export const listLikes = /* GraphQL */ `
         isMatched
         matchedDate
         conversationId
+        _directConversationString
         createdAt
         updatedAt
         owner
@@ -175,6 +182,7 @@ export const likesByLikerId = /* GraphQL */ `
         isMatched
         matchedDate
         conversationId
+        _directConversationString
         createdAt
         updatedAt
         owner
@@ -207,6 +215,7 @@ export const likesByLikeeId = /* GraphQL */ `
         isMatched
         matchedDate
         conversationId
+        _directConversationString
         createdAt
         updatedAt
         owner
@@ -241,6 +250,7 @@ export const getConversation = /* GraphQL */ `
         isMatched
         matchedDate
         conversationId
+        _directConversationString
         createdAt
         updatedAt
         owner

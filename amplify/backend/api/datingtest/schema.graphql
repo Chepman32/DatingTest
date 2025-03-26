@@ -22,6 +22,20 @@ type User @model
   conversations: [Conversation] @manyToMany(relationName: "UserConversations")
 }
 
+type LikeMessage {
+  id: ID!
+  text: String!
+  senderId: ID!
+  senderName: String
+  date: AWSDateTime!
+}
+
+type LikeConversation {
+  startDate: AWSDateTime!
+  lastMessageDate: AWSDateTime
+  messages: [LikeMessage]
+}
+
 type Like @model
 @auth(rules: [
   { allow: owner },
@@ -36,6 +50,7 @@ type Like @model
   matchedDate: AWSDateTime
   conversationId: ID
   conversation: Conversation @belongsTo(fields: ["conversationId"])
+  directConversation: LikeConversation
   createdAt: AWSDateTime
   updatedAt: AWSDateTime
 }

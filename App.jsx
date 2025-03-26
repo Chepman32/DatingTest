@@ -17,6 +17,7 @@ import ProfileScreen from './ProfileScreen';
 import ProfileCreationScreen from './ProfileCreationScreen';
 import LikesScreen from './LikesScreen';
 import ChatScreen from './ChatScreen';
+import DirectChatScreen from './DirectChatScreen';
 import { Image } from 'react-native';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { generateClient } from 'aws-amplify/api';
@@ -58,14 +59,19 @@ const ProfileStackScreen = () => {
 const LikesStackScreen = () => {
   return (
     <LikesStack.Navigator>
-      <LikesStack.Screen 
+      <LikesStack.Screen
         name="LikesList"
-        component={LikesScreen} 
+        component={LikesScreen}
         options={{ headerShown: false }}
       />
-      <LikesStack.Screen 
-        name="Chat" 
+      <LikesStack.Screen
+        name="Chat"
         component={ChatScreen}
+      />
+      <LikesStack.Screen
+        name="DirectChat"
+        component={DirectChatScreen}
+        options={{ title: 'Messages' }}
       />
       <LikesStack.Screen
         name="Profile"
