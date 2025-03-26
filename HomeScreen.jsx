@@ -4,11 +4,200 @@ import Swiper from 'react-native-deck-swiper';
 import { Auth } from 'aws-amplify';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { getUser, listUsers, likesByLikerId, likesByLikeeId } from './src/graphql/queries';
-import { createLike, updateLike } from './src/graphql/mutations';
+import { createLike, updateLike, createUser } from './src/graphql/mutations';
 import { generateClient } from 'aws-amplify/api';
 import * as queries from './src/graphql/queries';
+import * as mutations from './src/graphql/mutations';
+import 'react-native-get-random-values';
+import { v4 as uuidv4 } from 'uuid';
 
 const client = generateClient();
+
+// Mock data for generating random users
+const maleNames = [
+  'James', 'John', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph', 'Thomas', 'Charles',
+  'Christopher', 'Daniel', 'Matthew', 'Anthony', 'Mark', 'Donald', 'Steven', 'Paul', 'Andrew', 'Joshua',
+  'Kenneth', 'Kevin', 'Brian', 'George', 'Timothy', 'Ronald', 'Edward', 'Jason', 'Jeffrey', 'Ryan',
+  'Jacob', 'Gary', 'Nicholas', 'Eric', 'Jonathan', 'Stephen', 'Larry', 'Justin', 'Scott', 'Brandon',
+  'Benjamin', 'Samuel', 'Gregory', 'Alexander', 'Patrick', 'Frank', 'Raymond', 'Jack', 'Dennis', 'Jerry'
+];
+const femaleNames = [
+  'Mary', 'Patricia', 'Jennifer', 'Linda', 'Elizabeth', 'Barbara', 'Susan', 'Jessica', 'Sarah', 'Karen',
+  'Lisa', 'Nancy', 'Betty', 'Margaret', 'Sandra', 'Ashley', 'Kimberly', 'Emily', 'Donna', 'Michelle',
+  'Carol', 'Amanda', 'Dorothy', 'Melissa', 'Deborah', 'Stephanie', 'Rebecca', 'Laura', 'Sharon', 'Cynthia',
+  'Kathleen', 'Amy', 'Angela', 'Shirley', 'Anna', 'Ruth', 'Brenda', 'Pamela', 'Nicole', 'Katherine',
+  'Samantha', 'Christine', 'Emma', 'Catherine', 'Debra', 'Virginia', 'Rachel', 'Carolyn', 'Janet', 'Maria'
+];
+const locations = [
+  'New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia', 'San Antonio', 'San Diego', 'Dallas', 'San Jose',
+  'Austin', 'Jacksonville', 'Fort Worth', 'Columbus', 'San Francisco', 'Charlotte', 'Indianapolis', 'Seattle', 'Denver', 'Washington DC',
+  'Boston', 'El Paso', 'Nashville', 'Detroit', 'Portland', 'Memphis', 'Oklahoma City', 'Las Vegas', 'Louisville', 'Baltimore',
+  'Milwaukee', 'Albuquerque', 'Tucson', 'Fresno', 'Sacramento', 'Long Beach', 'Kansas City', 'Mesa', 'Atlanta', 'Colorado Springs',
+  'Miami', 'Raleigh', 'Omaha', 'Minneapolis', 'Tulsa', 'Cleveland', 'Wichita', 'Arlington', 'New Orleans', 'Bakersfield'
+];
+const bios = [
+  'Love hiking and outdoor adventures',
+  'Foodie who enjoys trying new restaurants',
+  'Passionate about photography and travel',
+  'Bookworm and coffee enthusiast',
+  'Fitness fanatic and health conscious',
+  'Music lover and concert goer',
+  'Tech enthusiast and gamer',
+  'Art lover and museum visitor',
+  'Movie buff and Netflix binger',
+  'Animal lover and pet owner',
+  'Entrepreneur building my own business',
+  'Yoga instructor and wellness advocate',
+  'Chef who loves experimenting with new recipes',
+  'Writer working on my first novel',
+  'Musician playing in a local band',
+  'Teacher who loves making a difference',
+  'Engineer with a creative side',
+  'Doctor passionate about healthcare',
+  'Lawyer fighting for justice',
+  'Scientist exploring the unknown',
+  'Traveler who has visited 30+ countries',
+  'Dancer with a background in ballet',
+  'Comedian who loves making people laugh',
+  'Environmentalist working to save the planet',
+  'Fashion designer with a unique style',
+  'Athlete training for my next marathon',
+  'Volunteer dedicated to community service',
+  'Photographer capturing life\'s moments',
+  'Gardener with a green thumb',
+  'History buff fascinated by the past',
+  'Adventurer seeking new experiences',
+  'Surfer who lives for the waves',
+  'Skier who spends winters on the slopes',
+  'Painter expressing emotions through art',
+  'Podcaster sharing interesting stories',
+  'Investor building for the future',
+  'Minimalist embracing simple living',
+  'Foodie with a passion for cooking',
+  'Blogger sharing my journey',
+  'DIY enthusiast always working on projects'
+];
+const interests = [
+  ['hiking', 'camping', 'nature'],
+  ['cooking', 'restaurants', 'food'],
+  ['photography', 'travel', 'adventure'],
+  ['reading', 'writing', 'coffee'],
+  ['fitness', 'yoga', 'health'],
+  ['music', 'concerts', 'festivals'],
+  ['technology', 'gaming', 'coding'],
+  ['art', 'museums', 'culture'],
+  ['movies', 'tv shows', 'cinema'],
+  ['animals', 'pets', 'wildlife'],
+  ['dancing', 'nightlife', 'parties'],
+  ['sports', 'football', 'basketball'],
+  ['meditation', 'mindfulness', 'spirituality'],
+  ['entrepreneurship', 'business', 'startups'],
+  ['fashion', 'shopping', 'style'],
+  ['gardening', 'plants', 'outdoors'],
+  ['history', 'politics', 'current events'],
+  ['science', 'astronomy', 'physics'],
+  ['languages', 'linguistics', 'communication'],
+  ['volunteering', 'charity', 'community'],
+  ['cars', 'motorcycles', 'mechanics'],
+  ['fishing', 'hunting', 'outdoor sports'],
+  ['crafts', 'DIY', 'making'],
+  ['wine', 'beer', 'spirits'],
+  ['podcasts', 'audiobooks', 'radio'],
+  ['comedy', 'stand-up', 'humor'],
+  ['investing', 'finance', 'economics'],
+  ['philosophy', 'psychology', 'thinking'],
+  ['architecture', 'design', 'interior'],
+  ['swimming', 'beach', 'water sports']
+];
+
+// Generate array of male profile image URLs from randomuser.me (1-99)
+const maleImages = Array.from({ length: 99 }, (_, i) =>
+  `https://randomuser.me/api/portraits/men/${i + 1}.jpg`
+);
+
+// Generate array of female profile image URLs from randomuser.me (1-99)
+const femaleImages = Array.from({ length: 99 }, (_, i) =>
+  `https://randomuser.me/api/portraits/women/${i + 1}.jpg`
+);
+
+// Function to generate a random mock user
+const generateRandomUser = (index) => {
+  // Create a more balanced gender distribution (not strictly alternating)
+  const isMale = Math.random() > 0.5;
+  const gender = isMale ? 'MALE' : 'FEMALE';
+
+  // Select random name from appropriate gender list
+  const name = isMale
+    ? maleNames[Math.floor(Math.random() * maleNames.length)]
+    : femaleNames[Math.floor(Math.random() * femaleNames.length)];
+
+  // Generate age with a more realistic distribution (18-65)
+  // More users in 25-35 range, fewer in older ranges
+  let age;
+  const ageDistribution = Math.random();
+  if (ageDistribution < 0.5) {
+    // 50% chance of being 21-35
+    age = Math.floor(Math.random() * 15) + 21;
+  } else if (ageDistribution < 0.8) {
+    // 30% chance of being 36-45
+    age = Math.floor(Math.random() * 10) + 36;
+  } else {
+    // 20% chance of being 46-65
+    age = Math.floor(Math.random() * 20) + 46;
+  }
+
+  const location = locations[Math.floor(Math.random() * locations.length)];
+  const bio = bios[Math.floor(Math.random() * bios.length)];
+
+  // Select 1-3 interest categories randomly
+  const numInterestCategories = Math.floor(Math.random() * 3) + 1;
+  let userInterests = [];
+  const availableInterests = [...interests]; // Copy the array to avoid modifying the original
+
+  for (let i = 0; i < numInterestCategories; i++) {
+    if (availableInterests.length === 0) break;
+
+    // Select a random interest category and remove it from available options
+    const randomIndex = Math.floor(Math.random() * availableInterests.length);
+    const selectedInterests = availableInterests.splice(randomIndex, 1)[0];
+
+    // Add each interest from the category
+    userInterests = [...userInterests, ...selectedInterests];
+  }
+
+  // Select random profile image from appropriate gender list
+  const imageUrl = isMale
+    ? maleImages[Math.floor(Math.random() * maleImages.length)]
+    : femaleImages[Math.floor(Math.random() * femaleImages.length)];
+
+  // Determine sexual preference with some diversity
+  // 90% heterosexual, 5% homosexual, 5% bisexual
+  const sexualPreference = Math.random();
+  let lookingFor;
+
+  if (sexualPreference < 0.9) {
+    // Heterosexual
+    lookingFor = [isMale ? 'FEMALE' : 'MALE'];
+  } else if (sexualPreference < 0.95) {
+    // Homosexual
+    lookingFor = [isMale ? 'MALE' : 'FEMALE'];
+  } else {
+    // Bisexual
+    lookingFor = ['MALE', 'FEMALE'];
+  }
+
+  return {
+    id: uuidv4(),
+    name,
+    age,
+    bio,
+    imageUrl,
+    location,
+    gender,
+    lookingFor,
+    interests: userInterests,
+  };
+};
 
 const { height: windowHeight } = Dimensions.get('window');
 
@@ -23,7 +212,7 @@ const HomeScreen = ({ navigation }) => {
   const fetchData = useCallback(async () => {
     setListLoading(true);
     try {
-      const { userId } = await getCurrentUser();
+      const { userId, username } = await getCurrentUser();
       const currentUserId = userId;
 
       const existingUser = await client.graphql({
@@ -32,10 +221,43 @@ const HomeScreen = ({ navigation }) => {
         authMode: 'userPool',
       });
       console.log('existingUser GraphQL response:', existingUser);
+
       if (!existingUser.data.getUser) {
-        navigation.navigate('ProfileCreation');
-        return;
+        console.log(`No user profile found. Creating default profile for user: ${username}, ID: ${currentUserId}`);
+
+        // Create a default user profile
+        const newUser = {
+          id: currentUserId,
+          name: username || 'New User',
+          age: 25,
+          bio: 'Tell us about yourself',
+          imageUrl: "https://us-east-2.admin.amplifyapp.com/static/media/amplify-logo.677fad72.svg",
+          location: 'Your Location',
+          gender: 'MALE',
+          lookingFor: ['FEMALE'], // Default looking for females
+          interests: ['dating'],
+        };
+
+        try {
+          const createdUser = await client.graphql({
+            query: mutations.createUser,
+            variables: { input: newUser },
+            authMode: 'userPool'
+          });
+
+          console.log('Default profile created successfully:', createdUser);
+          setCurrentUser(createdUser.data.createUser);
+
+          // Redirect to profile edit to complete profile
+          navigation.navigate('ProfileEdit');
+          return;
+        } catch (createError) {
+          console.error('Error creating default profile:', createError);
+          navigation.navigate('ProfileCreation');
+          return;
+        }
       }
+
       setCurrentUser(existingUser.data.getUser);
       console.log('Current user:', existingUser.data.getUser);
 
@@ -79,8 +301,89 @@ const HomeScreen = ({ navigation }) => {
     setListLoading(false);
   }, [navigation]);
 
+  // Function to create mock users
+  const createMockUsers = async () => {
+    console.log('Creating mock users...');
+    try {
+      // Check if we already have enough users in the database
+      const usersData = await client.graphql({
+        query: listUsers,
+        authMode: 'userPool'
+      });
+
+      const existingUsers = usersData.data.listUsers.items;
+      console.log(`Found ${existingUsers.length} existing users`);
+
+      // Target number of users (210 = original 10 + 200 more)
+      const targetUserCount = 210;
+
+      // Only create mock users if we have fewer than the target number
+      if (existingUsers.length >= targetUserCount) {
+        console.log(`Already have ${existingUsers.length} users, skipping mock user creation`);
+        return false; // No users created
+      }
+
+      // Create enough random users to reach the target
+      const mockUsersToCreate = targetUserCount - existingUsers.length;
+      console.log(`Creating ${mockUsersToCreate} mock users to reach target of ${targetUserCount}`);
+
+      // Create users in batches to avoid overwhelming the API
+      const batchSize = 10;
+      const batches = Math.ceil(mockUsersToCreate / batchSize);
+
+      for (let batch = 0; batch < batches; batch++) {
+        const batchStart = batch * batchSize;
+        const currentBatchSize = Math.min(batchSize, mockUsersToCreate - batchStart);
+
+        console.log(`Processing batch ${batch + 1}/${batches} (${currentBatchSize} users)`);
+
+        for (let i = 0; i < currentBatchSize; i++) {
+          const overallIndex = batchStart + i;
+          const mockUser = generateRandomUser(overallIndex);
+          console.log(`Creating mock user ${overallIndex + 1}/${mockUsersToCreate}:`, mockUser.name);
+
+          try {
+            await client.graphql({
+              query: mutations.createUser,
+              variables: { input: mockUser },
+              authMode: 'userPool'
+            });
+            console.log(`Created mock user: ${mockUser.name}`);
+          } catch (error) {
+            // If this specific user creation fails, continue with the next one
+            console.error(`Error creating mock user ${mockUser.name}:`, error);
+          }
+        }
+
+        // Small delay between batches to avoid rate limiting
+        if (batch < batches - 1) {
+          console.log('Pausing briefly between batches...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+
+      console.log(`Finished creating ${mockUsersToCreate} mock users`);
+      return true; // Users were created
+    } catch (error) {
+      console.error('Error in createMockUsers:', error);
+      return false;
+    }
+  };
+
   useEffect(() => {
-    fetchData();
+    const initializeApp = async () => {
+      await fetchData();
+      // Create mock users when the component mounts
+      const mockUsersCreated = await createMockUsers();
+
+      // If new mock users were created, refresh the data to include them
+      if (mockUsersCreated) {
+        console.log('Mock users created, refreshing data...');
+        await fetchData();
+      }
+    };
+
+    initializeApp();
   }, [fetchData]);
 
   const handleLike = async (index) => {

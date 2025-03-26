@@ -19,7 +19,7 @@ import { v4 as uuidv4 } from 'uuid';
 const client = generateClient();
 
 const DirectChatScreen = ({ route, navigation }) => {
-  const { likeId, matchName, directConversation, otherUserId } = route.params;
+  const { likeId, matchName, directConversation, otherUserId } = route.params || {};
   const [messages, setMessages] = useState(directConversation?.messages || []);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -38,6 +38,13 @@ const DirectChatScreen = ({ route, navigation }) => {
         // Get current user ID
         const userInfo = await getCurrentUser();
         setCurrentUserId(userInfo.userId);
+
+        // Check if likeId is valid before making API calls
+        if (!likeId) {
+          console.log('No likeId provided in route params');
+          setLoading(false);
+          return;
+        }
 
         // If we already have directConversation data from navigation params, use it
         if (directConversation && directConversation.messages) {
@@ -95,6 +102,12 @@ const DirectChatScreen = ({ route, navigation }) => {
     if (!newMessage.trim() || !currentUserId) return;
 
     try {
+      // Check if likeId is valid before proceeding
+      if (!likeId) {
+        console.error('Cannot send message: No likeId provided');
+        return;
+      }
+
       // Get sender name - either from the like object or use "You" as fallback
       let senderName = "You";
       if (like) {

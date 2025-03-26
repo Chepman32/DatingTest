@@ -210,10 +210,7 @@ const LikesScreen = ({ navigation }) => {
         style={styles.likeItem}
         onPress={() => {
           console.log(`Navigating to: ${navigationTarget.screen} with params:`, JSON.stringify(navigationTarget.params));
-          navigation.navigate("DirectChat", {
-            conversationId: item.conversationId,
-            matchName: user.name
-          })
+          navigation.navigate(navigationTarget.screen, navigationTarget.params);
         }}
       >
         <Image 
