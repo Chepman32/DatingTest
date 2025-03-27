@@ -88,7 +88,7 @@ function* fetchHomeDataSaga({ payload: navigation }) {
 
     yield put(setUsersList(potentialMatches));
   } catch (error) {
-    console.error('Error in fetchHomeDataSaga:', error);
+    console.log('Error in fetchHomeDataSaga:', error);
     // Set fallback values in case of error
     yield put(setReceivedLikerIds([]));
     yield put(setSentLikeeIds([]));
@@ -174,7 +174,7 @@ function* fetchLikesDataSaga() {
     }
     yield put(setReceivedLikes(enrichedReceivedLikes));
   } catch (error) {
-    console.error('Error in fetchLikesDataSaga:', error);
+    console.log('Error in fetchLikesDataSaga:', error);
     yield put(setSentLikes([]));
     yield put(setReceivedLikes([]));
   }
@@ -241,7 +241,7 @@ function* createLikeSaga({ payload }) {
       }
     }
   } catch (error) {
-    console.error('Error in createLikeSaga:', error);
+    console.log('Error in createLikeSaga:', error);
   }
 }
 
@@ -270,7 +270,7 @@ function* createTestUserSaga({ payload: gender }) {
 
     yield put({ type: 'FETCH_HOME_DATA' });
   } catch (error) {
-    console.error('Error in createTestUserSaga:', error);
+    console.log('Error in createTestUserSaga:', error);
   }
 }
 

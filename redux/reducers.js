@@ -22,7 +22,7 @@ const userReducer = (state = initialUserState, action) => {
     case 'SET_RECEIVED_LIKER_IDS':
       return { ...state, receivedLikerIds: action.payload };
     case 'SET_LIST_LOADING':
-      return { ...state, listLoading: action.runtimepayload };
+      return { ...state, listLoading: action.payload };
     case 'SET_SENT_LIKES':
       return { ...state, sentLikes: action.payload };
     case 'SET_RECEIVED_LIKES':

@@ -77,11 +77,14 @@ const HomeScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       {listLoading ? (
-        <View style={styles.loadingOverlay}>
+        // Case 1: Loading indicator when data is being fetched
+        <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#4CCC93" />
+          <Text style={styles.loadingText}>Loading potential matches...</Text>
         </View>
       ) : usersList.length > 0 ? (
-        <>
+        // Case 2: Show swiper and buttons when users are available
+        <View style={styles.contentContainer}>
           <Swiper
             ref={swiperRef}
             cards={usersList}
@@ -157,8 +160,9 @@ const HomeScreen = ({ navigation }) => {
               <Text style={styles.buttonText}>Like</Text>
             </TouchableOpacity>
           </View>
-        </>
+        </View>
       ) : (
+        // Case 3: Show empty state with refresh button when no users are available
         <View style={styles.noMatchesContainer}>
           <Text style={styles.noMatchesText}>No potential matches found</Text>
           <Text style={styles.noMatchesSubText}>
@@ -182,17 +186,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f0f0f0',
   },
-  loadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  // Loading state styles
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1000,
+    backgroundColor: '#f0f0f0',
   },
+  loadingText: {
+    marginTop: 15,
+    fontSize: 16,
+    color: '#555',
+    fontWeight: '500',
+  },
+  // Content container for swiper and buttons
+  contentContainer: {
+    flex: 1,
+    position: 'relative',
+  },
+  // No matches state styles
   noMatchesContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -220,11 +232,18 @@ const styles = StyleSheet.create({
     width: '80%',
     alignItems: 'center',
   },
+  // Card styles
   card: {
     height: windowHeight * 0.85,
     width: '100%',
     backgroundColor: '#fff',
     justifyContent: 'flex-start',
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   image: {
     width: '100%',
@@ -244,6 +263,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#000',
   },
+  // Button styles
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -259,12 +279,22 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     paddingHorizontal: 40,
     borderRadius: 25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
   },
   dislikeButton: {
     backgroundColor: '#E5566D',
     paddingVertical: 15,
     paddingHorizontal: 40,
     borderRadius: 25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
   },
   buttonText: {
     color: '#fff',
