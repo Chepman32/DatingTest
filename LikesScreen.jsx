@@ -1,155 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, ActivityIndicator } from 'react-native';
-import { getCurrentUser } from 'aws-amplify/auth';
-import { generateClient } from 'aws-amplify/api';
-import { likesByLikerId, likesByLikeeId, getUser, getConversation } from './src/graphql/queries';
-import { deleteLike } from './src/graphql/mutations';
-
-const client = generateClient();
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchLikesData } from './redux/actions';
 
 const LikesScreen = ({ navigation }) => {
-  const [sentLikes, setSentLikes] = useState([]);
-  const [receivedLikes, setReceivedLikes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [currentUserId, setCurrentUserId] = useState(null);
+  const dispatch = useDispatch();
+  const { sentLikes, receivedLikes, likesLoading } = useSelector(state => state.user);
 
   useEffect(() => {
-    const fetchLikes = async () => {
-      try {
-        const { userId } = await getCurrentUser();
-        setCurrentUserId(userId);
+    dispatch(fetchLikesData());
+  }, [dispatch]);
 
-        const sentLikesData = await client.graphql({
-          query: likesByLikerId,
-          variables: { likerId: userId },
-          authMode: 'userPool',
-        });
-        if (sentLikesData.errors) {
-          console.error('Errors fetching sent likes:', sentLikesData.errors);
-        }
-        const sentLikesList = sentLikesData.data?.likesByLikerId?.items || [];
-        console.log('Raw sent likes:', sentLikesList);
+  const combinedLikes = [
+    ...sentLikes.map(item => ({ ...item, isSent: true })),
+    ...receivedLikes.map(item => ({ ...item, isSent: false }))
+  ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-        const enrichedSentLikes = [];
-        for (let like of sentLikesList) {
-          // Fetch user data if needed
-          if (!like.likee && like.likeeId) {
-            const userData = await client.graphql({
-              query: getUser,
-              variables: { id: like.likeeId },
-              authMode: 'userPool',
-            });
-            like.likee = userData.data?.getUser;
-          }
-
-          // Fetch conversation data if this is a matched like with a conversation
-          if (like.isMatched && like.conversationId && !like.conversation) {
-            try {
-              console.log(`Fetching conversation data for like ${like.id} with conversationId ${like.conversationId}`);
-              const conversationData = await client.graphql({
-                query: getConversation,
-                variables: { id: like.conversationId },
-                authMode: 'userPool',
-              });
-              like.conversation = conversationData.data?.getConversation;
-              console.log(`Fetched conversation:`, like.conversation);
-            } catch (error) {
-              console.error(`Error fetching conversation for like ${like.id}:`, error);
-            }
-          }
-
-          // Log direct conversation data if it exists
-          if (like.directConversation) {
-            console.log(`Like ${like.id} has direct conversation:`, like.directConversation);
-          }
-
-          if (like.likee) {
-            enrichedSentLikes.push(like);
-          } else {
-            console.warn(`Deleting like with missing likee: ${like.id}`);
-            await client.graphql({
-              query: deleteLike,
-              variables: { input: { id: like.id } },
-              authMode: 'userPool',
-            });
-          }
-        }
-        setSentLikes(enrichedSentLikes);
-        console.log('Enriched sent likes:', enrichedSentLikes);
-
-        const receivedLikesData = await client.graphql({
-          query: likesByLikeeId,
-          variables: { likeeId: userId },
-          authMode: 'userPool',
-        });
-        if (receivedLikesData.errors) {
-          console.error('Errors fetching received likes:', receivedLikesData.errors);
-        }
-        const receivedLikesList = receivedLikesData.data?.likesByLikeeId?.items || [];
-        console.log('Raw received likes:', receivedLikesList);
-
-        const enrichedReceivedLikes = [];
-        for (let like of receivedLikesList) {
-          // Fetch user data if needed
-          if (!like.liker && like.likerId) {
-            const userData = await client.graphql({
-              query: getUser,
-              variables: { id: like.likerId },
-              authMode: 'userPool',
-            });
-            like.liker = userData.data?.getUser;
-          }
-
-          // Fetch conversation data if this is a matched like with a conversation
-          if (like.isMatched && like.conversationId && !like.conversation) {
-            try {
-              console.log(`Fetching conversation data for received like ${like.id} with conversationId ${like.conversationId}`);
-              const conversationData = await client.graphql({
-                query: getConversation,
-                variables: { id: like.conversationId },
-                authMode: 'userPool',
-              });
-              like.conversation = conversationData.data?.getConversation;
-              console.log(`Fetched conversation for received like:`, like.conversation);
-            } catch (error) {
-              console.error(`Error fetching conversation for received like ${like.id}:`, error);
-            }
-          }
-
-          // Log direct conversation data if it exists
-          if (like.directConversation) {
-            console.log(`Received like ${like.id} has direct conversation:`, like.directConversation);
-          }
-
-          if (like.liker) {
-            enrichedReceivedLikes.push(like);
-          } else {
-            console.warn(`Deleting like with missing liker: ${like.id}`);
-            await client.graphql({
-              query: deleteLike,
-              variables: { input: { id: like.id } },
-              authMode: 'userPool',
-            });
-          }
-        }
-        setReceivedLikes(enrichedReceivedLikes);
-        console.log('Enriched received likes:', enrichedReceivedLikes);
-      } catch (error) {
-        console.error('Error fetching likes:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchLikes();
-  }, []);
-
-  const renderLikeItem = ({ item, isSent }) => {
-    const user = isSent ? item.likee : item.liker;
-    console.log('Rendering like item:', JSON.stringify(item, null, 2));
-
+  const renderLikeItem = ({ item }) => {
+    const user = item.isSent ? item.likee : item.liker;
     if (!user) {
-      console.warn(`User data missing for like item: ${item.id}, isSent: ${isSent}`);
       return (
         <View style={styles.likeItem}>
           <Text style={styles.name}>User not found</Text>
@@ -157,33 +26,19 @@ const LikesScreen = ({ navigation }) => {
       );
     }
 
-    // Debug the item properties in detail
-    console.log(`Item details - id: ${item.id}, isMatched: ${item.isMatched}, conversationId: ${item.conversationId}`);
-
-    // Make sure we're using the correct boolean value for isMatched
-    // Some GraphQL responses might return it as a string or null
     const isMatched = item.isMatched === true || item.isMatched === 'true';
-
-    // Check for different types of conversations
     const hasRegularConversation = !!item.conversationId;
     const hasDirectConversation = !!item.directConversation &&
                                  Array.isArray(item.directConversation.messages) &&
                                  item.directConversation.messages.length > 0;
 
-    // Determine navigation target based on conversation type
     let navigationTarget;
-
     if (isMatched && hasRegularConversation) {
-      // Navigate to regular chat if there's a conversationId
       navigationTarget = {
         screen: 'Chat',
-        params: {
-          conversationId: item.conversationId,
-          matchName: user.name
-        }
+        params: { conversationId: item.conversationId, matchName: user.name }
       };
     } else if (hasDirectConversation) {
-      // Navigate to direct chat if there's a directConversation
       navigationTarget = {
         screen: 'DirectChat',
         params: {
@@ -194,29 +49,20 @@ const LikesScreen = ({ navigation }) => {
         }
       };
     } else {
-      // Default to profile view
       navigationTarget = {
         screen: 'Profile',
-        params: {
-          userId: user.id
-        }
+        params: { userId: user.id }
       };
     }
-
-    console.log("Navigation decision for like:", item);
 
     return (
       <TouchableOpacity
         style={styles.likeItem}
-        onPress={() => {
-          console.log(`Navigating to: ${navigationTarget.screen} with params:`, JSON.stringify(navigationTarget.params));
-          navigation.navigate(navigationTarget.screen, navigationTarget.params)
-        }}
+        onPress={() => navigation.navigate(navigationTarget.screen, navigationTarget.params)}
       >
-        <Image 
-          source={{ uri: user.imageUrl }} 
-          style={styles.avatar} 
-        />
+        <View style={[styles.avatarContainer, !item.isSent && styles.incomingLike]}>
+          <Image source={{ uri: user.imageUrl }} style={styles.avatar} />
+        </View>
         <View style={styles.likeInfo}>
           <Text style={styles.name}>{user.name}</Text>
           <Text style={styles.status}>
@@ -226,7 +72,7 @@ const LikesScreen = ({ navigation }) => {
                  : (hasDirectConversation
                     ? 'Matched! Tap to view messages'
                     : 'Matched!'))
-              : isSent
+              : item.isSent
                 ? 'Like sent'
                 : 'Liked you'}
           </Text>
@@ -238,23 +84,7 @@ const LikesScreen = ({ navigation }) => {
     );
   };
 
-  const renderSection = (title, data, isSent) => (
-    <View style={styles.section}>
-      <Text style={styles.sectionHeader}>{title}</Text>
-      <FlatList
-        data={data}
-        renderItem={({ item }) => renderLikeItem({ item, isSent })}
-        keyExtractor={item => item.id}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No {title.toLowerCase()} yet</Text>
-          </View>
-        }
-      />
-    </View>
-  );
-
-  if (loading) {
+  if (likesLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#4CCC93" />
@@ -265,8 +95,16 @@ const LikesScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Likes</Text>
-      {renderSection('Outgoing Likes', sentLikes, true)}
-      {renderSection('Incoming Likes', receivedLikes, false)}
+      <FlatList
+        data={combinedLikes}
+        renderItem={renderLikeItem}
+        keyExtractor={item => item.id}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No likes yet</Text>
+          </View>
+        }
+      />
     </View>
   );
 };
@@ -286,17 +124,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     padding: 16,
   },
-  section: {
-    flex: 1,
-  },
-  sectionHeader: {
-    fontSize: 18,
-    fontWeight: '600',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    backgroundColor: '#f5f5f5',
-  },
   likeItem: {
     flexDirection: 'row',
     padding: 16,
@@ -304,11 +131,19 @@ const styles = StyleSheet.create({
     borderBottomColor: '#eee',
     alignItems: 'center',
   },
+  avatarContainer: {
+    marginRight: 12,
+  },
   avatar: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    marginRight: 12,
+  },
+  incomingLike: {
+    borderWidth: 2,
+    borderColor: '#007AFF',
+    borderRadius: 27,
+    padding: 2,
   },
   likeInfo: {
     flex: 1,

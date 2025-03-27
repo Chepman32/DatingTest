@@ -1,13 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import {
-  useAuthenticator,
-  withAuthenticator,
-} from '@aws-amplify/ui-react-native';
-import * as mutations from './src/graphql/mutations';
-import * as queries from './src/graphql/queries';
+import React from 'react';
+import { useAuthenticator, withAuthenticator } from '@aws-amplify/ui-react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
+import { Provider } from 'react-redux';
+import store from './redux/store';
 import home from './assets/home.png';
 import match from './assets/match.png';
 import profile from './assets/profile.png';
@@ -19,14 +16,7 @@ import LikesScreen from './LikesScreen';
 import ChatScreen from './ChatScreen';
 import DirectChatScreen from './DirectChatScreen';
 import { Image } from 'react-native';
-import { getCurrentUser } from 'aws-amplify/auth';
-import { generateClient } from 'aws-amplify/api';
-import { Gender } from './src/models';
 import ProfileEdit from './ProfileEditScreen';
-
-const client = generateClient({
-  authMode: 'userPool',
-});
 
 const Tab = createBottomTabNavigator();
 const ProfileStack = createStackNavigator();
@@ -125,17 +115,17 @@ const MainTabNavigator = () => {
 
 const App = () => {
   return (
-    <NavigationContainer>
-      <MainStack.Navigator>
-        <MainStack.Screen 
-          name="Main" 
-          component={MainTabNavigator} 
-          options={{
-            headerShown: false,
-          }}
-        />
-      </MainStack.Navigator>
-    </NavigationContainer>
+    <Provider store={store}>
+      <NavigationContainer>
+        <MainStack.Navigator>
+          <MainStack.Screen 
+            name="Main" 
+            component={MainTabNavigator} 
+            options={{ headerShown: false }}
+          />
+        </MainStack.Navigator>
+      </NavigationContainer>
+    </Provider>
   );
 };
 
