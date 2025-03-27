@@ -15,13 +15,15 @@ import { getCurrentUser } from 'aws-amplify/auth';
 import { generateClient } from 'aws-amplify/api';
 import * as queries from './src/graphql/queries';
 import edit from './assets/edit.png';
+import { useAuthenticator } from '@aws-amplify/ui-react-native';
 
 const client = generateClient();
 
-const ProfileScreen = ({ navigation, signOut }) => {
+const ProfileScreen = ({ navigation }) => {
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { signOut } = useAuthenticator();
 
   useEffect(() => {
     loadProfileData();

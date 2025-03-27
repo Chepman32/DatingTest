@@ -8,196 +8,8 @@ import { createLike, updateLike, createUser } from './src/graphql/mutations';
 import { generateClient } from 'aws-amplify/api';
 import * as queries from './src/graphql/queries';
 import * as mutations from './src/graphql/mutations';
-import 'react-native-get-random-values';
-import { v4 as uuidv4 } from 'uuid';
 
 const client = generateClient();
-
-// Mock data for generating random users
-const maleNames = [
-  'James', 'John', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph', 'Thomas', 'Charles',
-  'Christopher', 'Daniel', 'Matthew', 'Anthony', 'Mark', 'Donald', 'Steven', 'Paul', 'Andrew', 'Joshua',
-  'Kenneth', 'Kevin', 'Brian', 'George', 'Timothy', 'Ronald', 'Edward', 'Jason', 'Jeffrey', 'Ryan',
-  'Jacob', 'Gary', 'Nicholas', 'Eric', 'Jonathan', 'Stephen', 'Larry', 'Justin', 'Scott', 'Brandon',
-  'Benjamin', 'Samuel', 'Gregory', 'Alexander', 'Patrick', 'Frank', 'Raymond', 'Jack', 'Dennis', 'Jerry'
-];
-const femaleNames = [
-  'Mary', 'Patricia', 'Jennifer', 'Linda', 'Elizabeth', 'Barbara', 'Susan', 'Jessica', 'Sarah', 'Karen',
-  'Lisa', 'Nancy', 'Betty', 'Margaret', 'Sandra', 'Ashley', 'Kimberly', 'Emily', 'Donna', 'Michelle',
-  'Carol', 'Amanda', 'Dorothy', 'Melissa', 'Deborah', 'Stephanie', 'Rebecca', 'Laura', 'Sharon', 'Cynthia',
-  'Kathleen', 'Amy', 'Angela', 'Shirley', 'Anna', 'Ruth', 'Brenda', 'Pamela', 'Nicole', 'Katherine',
-  'Samantha', 'Christine', 'Emma', 'Catherine', 'Debra', 'Virginia', 'Rachel', 'Carolyn', 'Janet', 'Maria'
-];
-const locations = [
-  'New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia', 'San Antonio', 'San Diego', 'Dallas', 'San Jose',
-  'Austin', 'Jacksonville', 'Fort Worth', 'Columbus', 'San Francisco', 'Charlotte', 'Indianapolis', 'Seattle', 'Denver', 'Washington DC',
-  'Boston', 'El Paso', 'Nashville', 'Detroit', 'Portland', 'Memphis', 'Oklahoma City', 'Las Vegas', 'Louisville', 'Baltimore',
-  'Milwaukee', 'Albuquerque', 'Tucson', 'Fresno', 'Sacramento', 'Long Beach', 'Kansas City', 'Mesa', 'Atlanta', 'Colorado Springs',
-  'Miami', 'Raleigh', 'Omaha', 'Minneapolis', 'Tulsa', 'Cleveland', 'Wichita', 'Arlington', 'New Orleans', 'Bakersfield'
-];
-const bios = [
-  'Love hiking and outdoor adventures',
-  'Foodie who enjoys trying new restaurants',
-  'Passionate about photography and travel',
-  'Bookworm and coffee enthusiast',
-  'Fitness fanatic and health conscious',
-  'Music lover and concert goer',
-  'Tech enthusiast and gamer',
-  'Art lover and museum visitor',
-  'Movie buff and Netflix binger',
-  'Animal lover and pet owner',
-  'Entrepreneur building my own business',
-  'Yoga instructor and wellness advocate',
-  'Chef who loves experimenting with new recipes',
-  'Writer working on my first novel',
-  'Musician playing in a local band',
-  'Teacher who loves making a difference',
-  'Engineer with a creative side',
-  'Doctor passionate about healthcare',
-  'Lawyer fighting for justice',
-  'Scientist exploring the unknown',
-  'Traveler who has visited 30+ countries',
-  'Dancer with a background in ballet',
-  'Comedian who loves making people laugh',
-  'Environmentalist working to save the planet',
-  'Fashion designer with a unique style',
-  'Athlete training for my next marathon',
-  'Volunteer dedicated to community service',
-  'Photographer capturing life\'s moments',
-  'Gardener with a green thumb',
-  'History buff fascinated by the past',
-  'Adventurer seeking new experiences',
-  'Surfer who lives for the waves',
-  'Skier who spends winters on the slopes',
-  'Painter expressing emotions through art',
-  'Podcaster sharing interesting stories',
-  'Investor building for the future',
-  'Minimalist embracing simple living',
-  'Foodie with a passion for cooking',
-  'Blogger sharing my journey',
-  'DIY enthusiast always working on projects'
-];
-const interests = [
-  ['hiking', 'camping', 'nature'],
-  ['cooking', 'restaurants', 'food'],
-  ['photography', 'travel', 'adventure'],
-  ['reading', 'writing', 'coffee'],
-  ['fitness', 'yoga', 'health'],
-  ['music', 'concerts', 'festivals'],
-  ['technology', 'gaming', 'coding'],
-  ['art', 'museums', 'culture'],
-  ['movies', 'tv shows', 'cinema'],
-  ['animals', 'pets', 'wildlife'],
-  ['dancing', 'nightlife', 'parties'],
-  ['sports', 'football', 'basketball'],
-  ['meditation', 'mindfulness', 'spirituality'],
-  ['entrepreneurship', 'business', 'startups'],
-  ['fashion', 'shopping', 'style'],
-  ['gardening', 'plants', 'outdoors'],
-  ['history', 'politics', 'current events'],
-  ['science', 'astronomy', 'physics'],
-  ['languages', 'linguistics', 'communication'],
-  ['volunteering', 'charity', 'community'],
-  ['cars', 'motorcycles', 'mechanics'],
-  ['fishing', 'hunting', 'outdoor sports'],
-  ['crafts', 'DIY', 'making'],
-  ['wine', 'beer', 'spirits'],
-  ['podcasts', 'audiobooks', 'radio'],
-  ['comedy', 'stand-up', 'humor'],
-  ['investing', 'finance', 'economics'],
-  ['philosophy', 'psychology', 'thinking'],
-  ['architecture', 'design', 'interior'],
-  ['swimming', 'beach', 'water sports']
-];
-
-// Generate array of male profile image URLs from randomuser.me (1-99)
-const maleImages = Array.from({ length: 99 }, (_, i) =>
-  `https://randomuser.me/api/portraits/men/${i + 1}.jpg`
-);
-
-// Generate array of female profile image URLs from randomuser.me (1-99)
-const femaleImages = Array.from({ length: 99 }, (_, i) =>
-  `https://randomuser.me/api/portraits/women/${i + 1}.jpg`
-);
-
-// Function to generate a random mock user
-const generateRandomUser = (index) => {
-  // Create a more balanced gender distribution (not strictly alternating)
-  const isMale = Math.random() > 0.5;
-  const gender = isMale ? 'MALE' : 'FEMALE';
-
-  // Select random name from appropriate gender list
-  const name = isMale
-    ? maleNames[Math.floor(Math.random() * maleNames.length)]
-    : femaleNames[Math.floor(Math.random() * femaleNames.length)];
-
-  // Generate age with a more realistic distribution (18-65)
-  // More users in 25-35 range, fewer in older ranges
-  let age;
-  const ageDistribution = Math.random();
-  if (ageDistribution < 0.5) {
-    // 50% chance of being 21-35
-    age = Math.floor(Math.random() * 15) + 21;
-  } else if (ageDistribution < 0.8) {
-    // 30% chance of being 36-45
-    age = Math.floor(Math.random() * 10) + 36;
-  } else {
-    // 20% chance of being 46-65
-    age = Math.floor(Math.random() * 20) + 46;
-  }
-
-  const location = locations[Math.floor(Math.random() * locations.length)];
-  const bio = bios[Math.floor(Math.random() * bios.length)];
-
-  // Select 1-3 interest categories randomly
-  const numInterestCategories = Math.floor(Math.random() * 3) + 1;
-  let userInterests = [];
-  const availableInterests = [...interests]; // Copy the array to avoid modifying the original
-
-  for (let i = 0; i < numInterestCategories; i++) {
-    if (availableInterests.length === 0) break;
-
-    // Select a random interest category and remove it from available options
-    const randomIndex = Math.floor(Math.random() * availableInterests.length);
-    const selectedInterests = availableInterests.splice(randomIndex, 1)[0];
-
-    // Add each interest from the category
-    userInterests = [...userInterests, ...selectedInterests];
-  }
-
-  // Select random profile image from appropriate gender list
-  const imageUrl = isMale
-    ? maleImages[Math.floor(Math.random() * maleImages.length)]
-    : femaleImages[Math.floor(Math.random() * femaleImages.length)];
-
-  // Determine sexual preference with some diversity
-  // 90% heterosexual, 5% homosexual, 5% bisexual
-  const sexualPreference = Math.random();
-  let lookingFor;
-
-  if (sexualPreference < 0.9) {
-    // Heterosexual
-    lookingFor = [isMale ? 'FEMALE' : 'MALE'];
-  } else if (sexualPreference < 0.95) {
-    // Homosexual
-    lookingFor = [isMale ? 'MALE' : 'FEMALE'];
-  } else {
-    // Bisexual
-    lookingFor = ['MALE', 'FEMALE'];
-  }
-
-  return {
-    id: uuidv4(),
-    name,
-    age,
-    bio,
-    imageUrl,
-    location,
-    gender,
-    lookingFor,
-    interests: userInterests,
-  };
-};
 
 const { height: windowHeight } = Dimensions.get('window');
 
@@ -285,14 +97,27 @@ const HomeScreen = ({ navigation }) => {
       const receivedLikes = receivedLikesData.data?.likesByLikeeId?.items || [];
       const likerIds = receivedLikes.map(like => like.likerId);
       setReceivedLikerIds(likerIds);
-      console.log('Received likes:', receivedLikes);
 
       const usersData = await client.graphql({ query: listUsers, authMode: 'userPool' });
-      const potentialMatches = usersData.data.listUsers.items.filter(user => existingUser.data.getUser.lookingFor.includes(user.gender)
-        && !sentLikes.some(like => like.likeeId === user.id)
-        && !receivedLikes.some(like => like.likerId === user.id)
+
+      // Filter out users that match the current user's preferences
+      const potentialMatches = usersData.data.listUsers.items.filter(user =>
+        // Don't show the current user in the list of potential matches
+        user.id !== currentUserId &&
+        // Check if the user's gender matches what the current user is looking for
+        existingUser.data.getUser.lookingFor.includes(user.gender) &&
+        // Don't show users that the current user has already liked
+        !sentLikes.some(like => like.likeeId === user.id) &&
+        // Don't show users that have already liked the current user
+        !receivedLikes.some(like => like.likerId === user.id)
       );
-      console.log("genders:", usersData.data.listUsers.items.filter(user => existingUser.data.getUser.lookingFor.includes(user.gender)));
+
+      console.log("All users:", usersData.data.listUsers.items);
+      console.log("Current user ID:", currentUserId);
+      console.log("Current user lookingFor:", existingUser.data.getUser.lookingFor);
+      console.log("Gender matching users:", usersData.data.listUsers.items.filter(user =>
+        existingUser.data.getUser.lookingFor.includes(user.gender) && user.id !== currentUserId
+      ));
       setUsersList(potentialMatches);
       console.log('Fetched users:', potentialMatches);
     } catch (error) {
@@ -301,90 +126,58 @@ const HomeScreen = ({ navigation }) => {
     setListLoading(false);
   }, [navigation]);
 
-  // Function to create mock users
-  const createMockUsers = async () => {
-    console.log('Creating mock users...');
+  // Function to create a test user with opposite gender
+  const createTestUser = async (currentUserGender) => {
     try {
-      // Check if we already have enough users in the database
-      const usersData = await client.graphql({
-        query: listUsers,
+      // Determine the opposite gender for the test user
+      const testUserGender = currentUserGender === 'MALE' ? 'FEMALE' : 'MALE';
+
+      // Create a unique username for the test user
+      const testUsername = `test_${testUserGender.toLowerCase()}_${Date.now()}`;
+
+      // Create the test user
+      const testUser = {
+        id: `test-${Date.now()}`,
+        name: testUsername,
+        age: 25,
+        bio: 'Test user profile',
+        imageUrl: "https://us-east-2.admin.amplifyapp.com/static/media/amplify-logo.677fad72.svg",
+        location: 'Test Location',
+        gender: testUserGender,
+        lookingFor: [currentUserGender], // Looking for the current user's gender
+        interests: ['dating'],
+        owner: testUsername,
+      };
+
+      console.log('Creating test user with gender:', testUserGender);
+
+      const createdTestUser = await client.graphql({
+        query: mutations.createUser,
+        variables: { input: testUser },
         authMode: 'userPool'
       });
 
-      const existingUsers = usersData.data.listUsers.items;
-      console.log(`Found ${existingUsers.length} existing users`);
+      console.log('Test user created successfully:', createdTestUser);
 
-      // Target number of users (210 = original 10 + 200 more)
-      const targetUserCount = 210;
-
-      // Only create mock users if we have fewer than the target number
-      if (existingUsers.length >= targetUserCount) {
-        console.log(`Already have ${existingUsers.length} users, skipping mock user creation`);
-        return false; // No users created
-      }
-
-      // Create enough random users to reach the target
-      const mockUsersToCreate = targetUserCount - existingUsers.length;
-      console.log(`Creating ${mockUsersToCreate} mock users to reach target of ${targetUserCount}`);
-
-      // Create users in batches to avoid overwhelming the API
-      const batchSize = 10;
-      const batches = Math.ceil(mockUsersToCreate / batchSize);
-
-      for (let batch = 0; batch < batches; batch++) {
-        const batchStart = batch * batchSize;
-        const currentBatchSize = Math.min(batchSize, mockUsersToCreate - batchStart);
-
-        console.log(`Processing batch ${batch + 1}/${batches} (${currentBatchSize} users)`);
-
-        for (let i = 0; i < currentBatchSize; i++) {
-          const overallIndex = batchStart + i;
-          const mockUser = generateRandomUser(overallIndex);
-          console.log(`Creating mock user ${overallIndex + 1}/${mockUsersToCreate}:`, mockUser.name);
-
-          try {
-            await client.graphql({
-              query: mutations.createUser,
-              variables: { input: mockUser },
-              authMode: 'userPool'
-            });
-            console.log(`Created mock user: ${mockUser.name}`);
-          } catch (error) {
-            // If this specific user creation fails, continue with the next one
-            console.error(`Error creating mock user ${mockUser.name}:`, error);
-          }
-        }
-
-        // Small delay between batches to avoid rate limiting
-        if (batch < batches - 1) {
-          console.log('Pausing briefly between batches...');
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      }
-
-      console.log(`Finished creating ${mockUsersToCreate} mock users`);
-      return true; // Users were created
+      // Refresh the data to include the new test user
+      fetchData();
     } catch (error) {
-      console.error('Error in createMockUsers:', error);
-      return false;
+      console.error('Error creating test user:', error);
     }
   };
 
   useEffect(() => {
-    const initializeApp = async () => {
-      await fetchData();
-      // Create mock users when the component mounts
-      const mockUsersCreated = await createMockUsers();
-
-      // If new mock users were created, refresh the data to include them
-      if (mockUsersCreated) {
-        console.log('Mock users created, refreshing data...');
-        await fetchData();
-      }
-    };
-
-    initializeApp();
+    fetchData();
   }, [fetchData]);
+
+  // Add a button to create a test user if no matches are found
+  const handleCreateTestUser = () => {
+    if (currentUser && currentUser.gender) {
+      createTestUser(currentUser.gender);
+    } else {
+      console.error('Current user or gender not available');
+    }
+  };
 
   const handleLike = async (index) => {
     console.log('handleLike called with index:', index);
@@ -511,7 +304,25 @@ const HomeScreen = ({ navigation }) => {
           {listLoading ? (
             <ActivityIndicator size="large" color="#4CCC93" />
           ) : (
-            <Text style={styles.noMatchesText}>No more potential matches</Text>
+            <>
+              <Text style={styles.noMatchesText}>No potential matches found</Text>
+              <Text style={styles.noMatchesSubText}>
+                This could be because there are no users that match your preferences,
+                or you've already interacted with all potential matches.
+              </Text>
+              <TouchableOpacity
+                style={styles.createTestUserButton}
+                onPress={handleCreateTestUser}
+              >
+                <Text style={styles.buttonText}>Create Test User for Demo</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.refreshButton}
+                onPress={fetchData}
+              >
+                <Text style={styles.buttonText}>Refresh</Text>
+              </TouchableOpacity>
+            </>
           )}
         </View>
       )}
@@ -536,10 +347,37 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
   noMatchesText: {
-    fontSize: 20,
-    color: '#999',
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#555',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  noMatchesSubText: {
+    fontSize: 16,
+    color: '#777',
+    textAlign: 'center',
+    marginBottom: 30,
+  },
+  createTestUserButton: {
+    backgroundColor: '#4CCC93',
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 25,
+    marginBottom: 15,
+    width: '80%',
+    alignItems: 'center',
+  },
+  refreshButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 25,
+    width: '80%',
+    alignItems: 'center',
   },
   card: {
     height: windowHeight * 0.85,
@@ -591,6 +429,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 

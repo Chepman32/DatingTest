@@ -182,7 +182,7 @@ const LikesScreen = ({ navigation }) => {
           matchName: user.name
         }
       };
-    } else if (isMatched && hasDirectConversation) {
+    } else if (hasDirectConversation) {
       // Navigate to direct chat if there's a directConversation
       navigationTarget = {
         screen: 'DirectChat',
@@ -203,14 +203,14 @@ const LikesScreen = ({ navigation }) => {
       };
     }
 
-    console.log(`Navigation decision for like ${item.id}: isMatched=${isMatched}, hasRegularConversation=${hasRegularConversation}, hasDirectConversation=${hasDirectConversation}, conversationId=${item.conversationId}, target=`, JSON.stringify(navigationTarget));
+    console.log("Navigation decision for like:", item);
 
     return (
       <TouchableOpacity
         style={styles.likeItem}
         onPress={() => {
           console.log(`Navigating to: ${navigationTarget.screen} with params:`, JSON.stringify(navigationTarget.params));
-          navigation.navigate(navigationTarget.screen, navigationTarget.params);
+          navigation.navigate(navigationTarget.screen, navigationTarget.params)
         }}
       >
         <Image 
