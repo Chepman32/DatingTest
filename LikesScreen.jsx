@@ -32,28 +32,14 @@ const LikesScreen = ({ navigation }) => {
                                  Array.isArray(item.directConversation.messages) &&
                                  item.directConversation.messages.length > 0;
 
-    let navigationTarget;
-    if (isMatched && hasRegularConversation) {
-      navigationTarget = {
-        screen: 'Chat',
-        params: { conversationId: item.conversationId, matchName: user.name }
-      };
-    } else if (hasDirectConversation) {
-      navigationTarget = {
-        screen: 'DirectChat',
-        params: {
-          likeId: item.id,
-          matchName: user.name,
-          directConversation: item.directConversation,
-          otherUserId: user.id
-        }
-      };
-    } else {
-      navigationTarget = {
-        screen: 'Profile',
-        params: { userId: user.id }
-      };
-    }
+    let navigationTarget = {
+      screen: 'DirectChat',
+      params: {
+        likeId: item.id,
+        matchName: user.name,
+        directConversation: item.directConversation,
+        otherUserId: user.id
+      }};
 
     return (
       <TouchableOpacity

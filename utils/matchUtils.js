@@ -1,7 +1,7 @@
-import { generateClient } from 'aws-amplify/api';
-import { getLike, getUser } from '../src/graphql/queries';
-import { updateLike } from '../src/graphql/mutations';
-import { v4 as uuidv4 } from 'uuid';
+import {generateClient} from 'aws-amplify/api';
+import {getLike, getUser} from '../src/graphql/queries';
+import {updateLike} from '../src/graphql/mutations';
+import {v4 as uuidv4} from 'uuid';
 
 const client = generateClient();
 
@@ -12,40 +12,44 @@ const client = generateClient();
  * @param {string} initialMessage - Optional initial message to send
  * @returns {Promise<Object>} - The updated like object
  */
-export const createDirectConversation = async (likeId, currentUserId, initialMessage = null) => {
+export const createDirectConversation = async (
+  likeId,
+  currentUserId,
+  initialMessage = null,
+) => {
   try {
     // Fetch the like data
     const likeData = await client.graphql({
       query: getLike,
-      variables: { id: likeId },
+      variables: {id: likeId},
       authMode: 'userPool',
     });
-    
+
     const like = likeData.data?.getLike;
     if (!like) {
       throw new Error(`Like with ID ${likeId} not found`);
     }
-    
+
     // Check if this is already matched
     if (!like.isMatched) {
       throw new Error('Cannot create a conversation for a non-matched like');
     }
-    
+
     // Determine if current user is liker or likee
     const isLiker = currentUserId === like.likerId;
     const otherUserId = isLiker ? like.likeeId : like.likerId;
-    
+
     // Get current user's name
     const currentUserData = await client.graphql({
       query: getUser,
-      variables: { id: currentUserId },
+      variables: {id: currentUserId},
       authMode: 'userPool',
     });
     const currentUser = currentUserData.data?.getUser;
-    
+
     // Create the direct conversation object
     const messages = [];
-    
+
     // Add initial message if provided
     if (initialMessage) {
       messages.push({
@@ -56,26 +60,33 @@ export const createDirectConversation = async (likeId, currentUserId, initialMes
         date: new Date().toISOString(),
       });
     }
-    
+
     const directConversation = {
       startDate: new Date().toISOString(),
       lastMessageDate: initialMessage ? new Date().toISOString() : null,
       messages,
     };
-    
-    // Update the like with the direct conversation
+
+    // Convert the directConversation to a string to ensure it's properly saved
+    const directConversationString = JSON.stringify(directConversation);
+
+    // Update the like with the direct conversation - only include the fields that are defined in the schema
     const updatedLikeData = await client.graphql({
       query: updateLike,
       variables: {
         input: {
           id: likeId,
-          directConversation,
+          directConversation: {
+            startDate: directConversation.startDate,
+            lastMessageDate: directConversation.lastMessageDate,
+          },
+          _directConversationString: directConversationString,
           matchedDate: like.matchedDate || new Date().toISOString(),
         },
       },
       authMode: 'userPool',
     });
-    
+
     return updatedLikeData.data?.updateLike;
   } catch (error) {
     console.error('Error creating direct conversation:', error);
@@ -90,28 +101,32 @@ export const createDirectConversation = async (likeId, currentUserId, initialMes
  * @param {string} text - The message text
  * @returns {Promise<Object>} - The updated like object
  */
-export const addMessageToDirectConversation = async (likeId, senderId, text) => {
+export const addMessageToDirectConversation = async (
+  likeId,
+  senderId,
+  text,
+) => {
   try {
     // Fetch the like data
     const likeData = await client.graphql({
       query: getLike,
-      variables: { id: likeId },
+      variables: {id: likeId},
       authMode: 'userPool',
     });
-    
+
     const like = likeData.data?.getLike;
     if (!like) {
       throw new Error(`Like with ID ${likeId} not found`);
     }
-    
+
     // Get sender's name
     const senderData = await client.graphql({
       query: getUser,
-      variables: { id: senderId },
+      variables: {id: senderId},
       authMode: 'userPool',
     });
     const sender = senderData.data?.getUser;
-    
+
     // Create the new message
     const newMessage = {
       id: uuidv4(),
@@ -120,35 +135,63 @@ export const addMessageToDirectConversation = async (likeId, senderId, text) => 
       senderName: sender?.name || 'User',
       date: new Date().toISOString(),
     };
-    
+
     // Get existing direct conversation or create a new one
+    let existingMessages = [];
+
+    // Try to get messages from directConversation first
+    if (like.directConversation?.messages) {
+      existingMessages = [...like.directConversation.messages];
+    }
+    // If no messages in directConversation, try to parse from _directConversationString
+    else if (like._directConversationString) {
+      try {
+        const parsedConversation = JSON.parse(like._directConversationString);
+        if (
+          parsedConversation.messages &&
+          Array.isArray(parsedConversation.messages)
+        ) {
+          existingMessages = parsedConversation.messages;
+        }
+      } catch (parseError) {
+        console.error('Error parsing directConversationString:', parseError);
+      }
+    }
+
     const directConversation = like.directConversation || {
       startDate: new Date().toISOString(),
       messages: [],
     };
-    
+
     // Add the new message
-    const updatedMessages = [...(directConversation.messages || []), newMessage];
-    
+    const updatedMessages = [...existingMessages, newMessage];
+
     // Update the direct conversation
     const updatedDirectConversation = {
       ...directConversation,
       messages: updatedMessages,
       lastMessageDate: new Date().toISOString(),
     };
-    
-    // Update the like
+
+    // Convert the directConversation to a string to ensure it's properly saved
+    const directConversationString = JSON.stringify(updatedDirectConversation);
+
+    // Update the like - only include the fields that are defined in the schema
     const updatedLikeData = await client.graphql({
       query: updateLike,
       variables: {
         input: {
           id: likeId,
-          directConversation: updatedDirectConversation,
+          directConversation: {
+            startDate: updatedDirectConversation.startDate,
+            lastMessageDate: updatedDirectConversation.lastMessageDate,
+          },
+          _directConversationString: directConversationString,
         },
       },
       authMode: 'userPool',
     });
-    
+
     return updatedLikeData.data?.updateLike;
   } catch (error) {
     console.error('Error adding message to direct conversation:', error);
