@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { StyleSheet, View, Text, Image, TouchableOpacity, Dimensions, ActivityIndicator, Platform } from 'react-native';
 import Swiper from 'react-native-deck-swiper';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchHomeData, createLikeAction, createTestUserAction } from './redux/actions';
+import { fetchHomeData, createLikeAction } from './redux/actions';
 
 const { height: windowHeight } = Dimensions.get('window');
 
@@ -42,12 +42,6 @@ const HomeScreen = ({ navigation }) => {
       }
     }
   }, [sentLikeeIds, receivedLikerIds, currentUser]);
-
-  const handleCreateTestUser = () => {
-    if (currentUser && currentUser.gender) {
-      dispatch(createTestUserAction(currentUser.gender));
-    }
-  };
 
   const handleLike = (index) => {
     if (!randomizedUsers[index] || listLoading) return;

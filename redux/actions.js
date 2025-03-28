@@ -34,10 +34,6 @@ export const createLikeAction = likeInput => ({
   type: 'CREATE_LIKE',
   payload: likeInput,
 });
-export const createTestUserAction = gender => ({
-  type: 'CREATE_TEST_USER',
-  payload: gender,
-});
 export const addSentLike = like => ({type: 'ADD_SENT_LIKE', payload: like}); // New action to add a single like
 export const updateReceivedLike = like => ({
   type: 'UPDATE_RECEIVED_LIKE',
