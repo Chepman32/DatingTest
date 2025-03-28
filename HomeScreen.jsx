@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { StyleSheet, View, Text, Image, TouchableOpacity, Dimensions, ActivityIndicator, Platform } from 'react-native';
 import Swiper from 'react-native-deck-swiper';
 import { useDispatch, useSelector } from 'react-redux';
@@ -10,11 +10,29 @@ const HomeScreen = ({ navigation }) => {
   const dispatch = useDispatch();
   const { usersList, currentUser, sentLikeeIds, receivedLikerIds, listLoading } = useSelector(state => state.user);
   const swiperRef = useRef(null);
+  const [randomizedUsers, setRandomizedUsers] = useState([]);
+
+  // Function to shuffle array (Fisher-Yates algorithm)
+  const shuffleArray = (array) => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
 
   useEffect(() => {
     console.log('Fetching home data');
     dispatch(fetchHomeData(navigation));
   }, [dispatch, navigation]);
+
+  // Randomize users when usersList changes
+  useEffect(() => {
+    if (usersList && usersList.length > 0) {
+      setRandomizedUsers(shuffleArray(usersList));
+    }
+  }, [usersList]);
 
   useEffect(() => {
     if (sentLikeeIds && receivedLikerIds && currentUser) {
@@ -32,8 +50,8 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const handleLike = (index) => {
-    if (!usersList[index] || listLoading) return;
-    const swipedUser = usersList[index];
+    if (!randomizedUsers[index] || listLoading) return;
+    const swipedUser = randomizedUsers[index];
     const isMatched = receivedLikerIds.includes(swipedUser.id);
 
     const likeInput = {
@@ -43,6 +61,11 @@ const HomeScreen = ({ navigation }) => {
     };
 
     dispatch(createLikeAction(likeInput));
+
+    // Remove the user from both randomized list and original list
+    const newRandomizedUsers = randomizedUsers.filter(user => user?.id !== swipedUser?.id);
+    setRandomizedUsers(newRandomizedUsers);
+
     const newUsersList = usersList.filter(user => user?.id !== swipedUser?.id);
     dispatch({ type: 'SET_USERS_LIST', payload: newUsersList });
 
@@ -52,8 +75,13 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const handleDislike = (index) => {
-    if (!usersList[index] || listLoading) return;
-    const swipedUser = usersList[index];
+    if (!randomizedUsers[index] || listLoading) return;
+    const swipedUser = randomizedUsers[index];
+
+    // Remove the user from both randomized list and original list
+    const newRandomizedUsers = randomizedUsers.filter(user => user?.id !== swipedUser?.id);
+    setRandomizedUsers(newRandomizedUsers);
+
     const newUsersList = usersList.filter(user => user?.id !== swipedUser?.id);
     dispatch({ type: 'SET_USERS_LIST', payload: newUsersList });
   };
@@ -82,12 +110,12 @@ const HomeScreen = ({ navigation }) => {
           <ActivityIndicator size="large" color="#4CCC93" />
           <Text style={styles.loadingText}>Loading potential matches...</Text>
         </View>
-      ) : usersList.length > 0 ? (
+      ) : randomizedUsers.length > 0 ? (
         // Case 2: Show swiper and buttons when users are available
         <View style={styles.contentContainer}>
           <Swiper
             ref={swiperRef}
-            cards={usersList}
+            cards={randomizedUsers}
             renderCard={renderCard}
             cardIndex={0}
             backgroundColor="#f0f0f0"
@@ -171,7 +199,10 @@ const HomeScreen = ({ navigation }) => {
           </Text>
           <TouchableOpacity
             style={styles.refreshButton}
-            onPress={() => dispatch(fetchHomeData(navigation))}
+            onPress={() => {
+              dispatch(fetchHomeData(navigation));
+              // This will trigger the useEffect that randomizes users when usersList changes
+            }}
           >
             <Text style={styles.buttonText}>Refresh</Text>
           </TouchableOpacity>
