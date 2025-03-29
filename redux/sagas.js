@@ -1,6 +1,6 @@
-import { put, takeEvery, call, all, select } from 'redux-saga/effects';
-import { getCurrentUser } from 'aws-amplify/auth';
-import { generateClient } from 'aws-amplify/api';
+import {put, takeEvery, call, all, select} from 'redux-saga/effects';
+import {getCurrentUser} from 'aws-amplify/auth';
+import {generateClient} from 'aws-amplify/api';
 import * as queries from '../src/graphql/queries';
 import * as mutations from '../src/graphql/mutations';
 import {
@@ -31,16 +31,21 @@ function* fetchHomeDataSaga({ payload: navigation }) {
     });
 
     if (!existingUser.data.getUser) {
+      // Updated user creation with schema-aligned fields
       const newUser = {
         id: currentUserId,
         name: username || 'New User',
         age: 25,
         bio: 'Tell us about yourself',
         imageUrl: "https://us-east-2.admin.amplifyapp.com/static/media/amplify-logo.677fad72.svg",
+        gender: 'MALE', // Default value from enum Gender
+        lookingFor: ['FEMALE'], // Array of Gender enum values
         location: 'Your Location',
-        gender: 'MALE',
-        lookingFor: ['FEMALE'],
-        interests: ['dating'],
+        interests: ['dating'], // Array of strings
+        lastActive: new Date().toISOString(), // AWSDateTime
+        createdAt: new Date().toISOString(), // AWSDateTime
+        // Note: updatedAt will be automatically handled by Amplify
+        // Relationships (sentLikes, receivedLikes, etc.) will be empty by default
       };
 
       const createdUser = yield call([client, client.graphql], {
@@ -56,6 +61,7 @@ function* fetchHomeDataSaga({ payload: navigation }) {
 
     yield put(setCurrentUser(existingUser.data.getUser));
 
+    // Fetch sent likes
     const sentLikesData = yield call([client, client.graphql], {
       query: queries.likesByLikerId,
       variables: { likerId: currentUserId },
@@ -65,15 +71,17 @@ function* fetchHomeDataSaga({ payload: navigation }) {
     const likeeIds = sentLikes.map(like => like.likeeId);
     yield put(setSentLikeeIds(likeeIds));
 
+    // Fetch received likes
     const receivedLikesData = yield call([client, client.graphql], {
       query: queries.likesByLikeeId,
       variables: { likeeId: currentUserId },
       authMode: 'userPool',
     });
     const receivedLikes = receivedLikesData.data?.likesByLikeeId?.items || [];
-    const likerIds = receivedLikes.map(like => like.likerId) || []; // Ensure fallback to empty array
+    const likerIds = receivedLikes.map(like => like.likerId) || [];
     yield put(setReceivedLikerIds(likerIds));
 
+    // Fetch potential matches
     const usersData = yield call([client, client.graphql], {
       query: queries.listUsers,
       authMode: 'userPool',
@@ -89,7 +97,6 @@ function* fetchHomeDataSaga({ payload: navigation }) {
     yield put(setUsersList(potentialMatches));
   } catch (error) {
     console.log('Error in fetchHomeDataSaga:', error);
-    // Set fallback values in case of error
     yield put(setReceivedLikerIds([]));
     yield put(setSentLikeeIds([]));
     yield put(setUsersList([]));
@@ -100,11 +107,11 @@ function* fetchHomeDataSaga({ payload: navigation }) {
 function* fetchLikesDataSaga() {
   yield put(setLikesLoading(true));
   try {
-    const { userId } = yield call(getCurrentUser);
+    const {userId} = yield call(getCurrentUser);
 
     const sentLikesData = yield call([client, client.graphql], {
       query: queries.likesByLikerId,
-      variables: { likerId: userId },
+      variables: {likerId: userId},
       authMode: 'userPool',
     });
     const sentLikesList = sentLikesData.data?.likesByLikerId?.items || [];
@@ -113,7 +120,7 @@ function* fetchLikesDataSaga() {
       if (!like.likee && like.likeeId) {
         const userData = yield call([client, client.graphql], {
           query: queries.getUser,
-          variables: { id: like.likeeId },
+          variables: {id: like.likeeId},
           authMode: 'userPool',
         });
         like.likee = userData.data?.getUser;
@@ -121,7 +128,7 @@ function* fetchLikesDataSaga() {
       if (like.isMatched && like.conversationId && !like.conversation) {
         const conversationData = yield call([client, client.graphql], {
           query: queries.getConversation,
-          variables: { id: like.conversationId },
+          variables: {id: like.conversationId},
           authMode: 'userPool',
         });
         like.conversation = conversationData.data?.getConversation;
@@ -131,7 +138,7 @@ function* fetchLikesDataSaga() {
       } else {
         yield call([client, client.graphql], {
           query: mutations.deleteLike,
-          variables: { input: { id: like.id } },
+          variables: {input: {id: like.id}},
           authMode: 'userPool',
         });
       }
@@ -140,16 +147,17 @@ function* fetchLikesDataSaga() {
 
     const receivedLikesData = yield call([client, client.graphql], {
       query: queries.likesByLikeeId,
-      variables: { likeeId: userId },
+      variables: {likeeId: userId},
       authMode: 'userPool',
     });
-    const receivedLikesList = receivedLikesData.data?.likesByLikeeId?.items || [];
+    const receivedLikesList =
+      receivedLikesData.data?.likesByLikeeId?.items || [];
     const enrichedReceivedLikes = [];
     for (let like of receivedLikesList) {
       if (!like.liker && like.likerId) {
         const userData = yield call([client, client.graphql], {
           query: queries.getUser,
-          variables: { id: like.likerId },
+          variables: {id: like.likerId},
           authMode: 'userPool',
         });
         like.liker = userData.data?.getUser;
@@ -157,7 +165,7 @@ function* fetchLikesDataSaga() {
       if (like.isMatched && like.conversationId && !like.conversation) {
         const conversationData = yield call([client, client.graphql], {
           query: queries.getConversation,
-          variables: { id: like.conversationId },
+          variables: {id: like.conversationId},
           authMode: 'userPool',
         });
         like.conversation = conversationData.data?.getConversation;
@@ -167,7 +175,7 @@ function* fetchLikesDataSaga() {
       } else {
         yield call([client, client.graphql], {
           query: mutations.deleteLike,
-          variables: { input: { id: like.id } },
+          variables: {input: {id: like.id}},
           authMode: 'userPool',
         });
       }
@@ -181,7 +189,7 @@ function* fetchLikesDataSaga() {
   yield put(setLikesLoading(false));
 }
 
-function* createLikeSaga({ payload }) {
+function* createLikeSaga({payload}) {
   try {
     const likeInput = {
       likerId: payload.likerId,
@@ -191,7 +199,7 @@ function* createLikeSaga({ payload }) {
 
     const createLikeResponse = yield call([client, client.graphql], {
       query: mutations.createLike,
-      variables: { input: likeInput },
+      variables: {input: likeInput},
       authMode: 'userPool',
     });
     const createdLike = createLikeResponse.data.createLike;
@@ -199,45 +207,51 @@ function* createLikeSaga({ payload }) {
     // Fetch the liked user's data to enrich the like object
     const likeeData = yield call([client, client.graphql], {
       query: queries.getUser,
-      variables: { id: payload.likeeId },
+      variables: {id: payload.likeeId},
       authMode: 'userPool',
     });
-    const enrichedLike = { ...createdLike, likee: likeeData.data.getUser };
+    const enrichedLike = {...createdLike, likee: likeeData.data.getUser};
 
     // Update sentLikes in Redux store
     yield put(addSentLike(enrichedLike));
 
     // Update usersList by removing the liked user
-    yield put(setUsersList(
-      yield select(state => state.user.usersList.filter(user => user.id !== payload.likeeId))
-    ));
+    yield put(
+      setUsersList(
+        yield select(state =>
+          state.user.usersList.filter(user => user.id !== payload.likeeId),
+        ),
+      ),
+    );
 
     // Check for mutual like with a safeguard
-    const receivedLikerIds = yield select(state => state.user.receivedLikerIds || []);
+    const receivedLikerIds = yield select(
+      state => state.user.receivedLikerIds || [],
+    );
     if (receivedLikerIds.includes(payload.likeeId)) {
       const existingLikeData = yield call([client, client.graphql], {
         query: queries.likesByLikeeId,
-        variables: { likeeId: payload.likerId },
+        variables: {likeeId: payload.likerId},
         authMode: 'userPool',
       });
       const existingLike = existingLikeData.data.likesByLikeeId.items.find(
-        like => like.likerId === payload.likeeId
+        like => like.likerId === payload.likeeId,
       );
       if (existingLike) {
         yield call([client, client.graphql], {
           query: mutations.updateLike,
-          variables: { input: { id: existingLike.id, isMatched: true } },
+          variables: {input: {id: existingLike.id, isMatched: true}},
           authMode: 'userPool',
         });
         yield call([client, client.graphql], {
           query: mutations.updateLike,
-          variables: { input: { id: createdLike.id, isMatched: true } },
+          variables: {input: {id: createdLike.id, isMatched: true}},
           authMode: 'userPool',
         });
 
         // Update the received like in Redux store
-        yield put(updateReceivedLike({ id: existingLike.id, isMatched: true }));
-        yield put(addSentLike({ ...enrichedLike, isMatched: true }));
+        yield put(updateReceivedLike({id: existingLike.id, isMatched: true}));
+        yield put(addSentLike({...enrichedLike, isMatched: true}));
       }
     }
   } catch (error) {
@@ -245,7 +259,7 @@ function* createLikeSaga({ payload }) {
   }
 }
 
-function* createTestUserSaga({ payload: gender }) {
+function* createTestUserSaga({payload: gender}) {
   try {
     const testUserGender = gender === 'MALE' ? 'FEMALE' : 'MALE';
     const testUsername = `test_${testUserGender.toLowerCase()}_${Date.now()}`;
@@ -254,7 +268,8 @@ function* createTestUserSaga({ payload: gender }) {
       name: testUsername,
       age: 25,
       bio: 'Test user profile',
-      imageUrl: "https://us-east-2.admin.amplifyapp.com/static/media/amplify-logo.677fad72.svg",
+      imageUrl:
+        'https://us-east-2.admin.amplifyapp.com/static/media/amplify-logo.677fad72.svg',
       location: 'Test Location',
       gender: testUserGender,
       lookingFor: [gender],
@@ -264,11 +279,11 @@ function* createTestUserSaga({ payload: gender }) {
 
     yield call([client, client.graphql], {
       query: mutations.createUser,
-      variables: { input: testUser },
+      variables: {input: testUser},
       authMode: 'userPool',
     });
 
-    yield put({ type: 'FETCH_HOME_DATA' });
+    yield put({type: 'FETCH_HOME_DATA'});
   } catch (error) {
     console.log('Error in createTestUserSaga:', error);
   }

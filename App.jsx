@@ -24,7 +24,6 @@ const LikesStack = createStackNavigator();
 const MainStack = createStackNavigator();
 
 const ProfileStackScreen = () => {
-  const { signOut } = useAuthenticator();
   return (
     <ProfileStack.Navigator>
       <ProfileStack.Screen 

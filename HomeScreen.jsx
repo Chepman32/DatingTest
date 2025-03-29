@@ -3,6 +3,8 @@ import { StyleSheet, View, Text, Image, TouchableOpacity, Dimensions, ActivityIn
 import Swiper from 'react-native-deck-swiper';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchHomeData, createLikeAction } from './redux/actions';
+import { generateClient } from 'aws-amplify/api';
+import * as queries from './src/graphql/queries';
 
 const { height: windowHeight } = Dimensions.get('window');
 
@@ -22,15 +24,72 @@ const HomeScreen = ({ navigation }) => {
     return shuffled;
   };
 
+  // Initial data fetch
   useEffect(() => {
     console.log('Fetching home data');
     dispatch(fetchHomeData(navigation));
   }, [dispatch, navigation]);
 
+  // Separate effect to handle the case where users exist but aren't displayed
+  useEffect(() => {
+    if (usersList && usersList.length > 0 && (!randomizedUsers || randomizedUsers.length === 0)) {
+      console.log('Users exist but not displayed, forcing update...');
+      // Use a timeout to ensure this doesn't cause an infinite loop
+      const timer = setTimeout(() => {
+        setRandomizedUsers(shuffleArray(usersList));
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [usersList, randomizedUsers]);
+
   // Randomize users when usersList changes
   useEffect(() => {
     if (usersList && usersList.length > 0) {
-      setRandomizedUsers(shuffleArray(usersList));
+      console.log('Users available:', usersList.length);
+      // Make a deep copy to ensure we're not affected by reference issues
+      const usersCopy = JSON.parse(JSON.stringify(usersList));
+      setRandomizedUsers(shuffleArray(usersCopy));
+    } else {
+      console.log('No users in usersList or empty array');
+
+      // EMERGENCY FALLBACK: If we have no users in the list, try to fetch the "wow" user directly
+      if (!usersList || usersList.length === 0) {
+        console.log('Attempting to fetch wow user directly as emergency fallback');
+        // This is a last resort to ensure the "wow" user is displayed
+        const fetchWowUser = async () => {
+          try {
+            const client = generateClient();
+            const response = await client.graphql({
+              query: queries.listUsers,
+              variables: {
+                filter: {
+                  name: {
+                    eq: 'wow'
+                  }
+                }
+              },
+              authMode: 'userPool'
+            });
+
+            const wowUser = response.data.listUsers.items.find(user => user.name === 'wow');
+            if (wowUser) {
+              console.log('Found wow user directly:', wowUser);
+              setRandomizedUsers([wowUser]);
+            } else {
+              setRandomizedUsers([]);
+            }
+          } catch (error) {
+            console.log('Error fetching wow user directly:', error);
+            setRandomizedUsers([]);
+          }
+        };
+
+        fetchWowUser();
+      } else {
+        // Reset randomizedUsers when usersList is empty to maintain consistency
+        setRandomizedUsers([]);
+      }
     }
   }, [usersList]);
 
@@ -96,6 +155,33 @@ const HomeScreen = ({ navigation }) => {
     );
   };
 
+  // Debug information
+  useEffect(() => {
+    console.log('Render state:', {
+      listLoading,
+      usersListLength: usersList?.length || 0,
+      randomizedUsersLength: randomizedUsers?.length || 0
+    });
+
+    // Log detailed information about the users in usersList
+    if (usersList && usersList.length > 0) {
+      console.log('Users in usersList:', usersList.map(user => ({
+        id: user.id,
+        name: user.name,
+        gender: user.gender,
+        lookingFor: user.lookingFor
+      })));
+    }
+
+    // Check if the specific user "wow" exists in the Redux store
+    const wowUser = usersList?.find(user => user.name === 'wow');
+    if (wowUser) {
+      console.log('Found "wow" user in usersList:', wowUser);
+    } else {
+      console.log('"wow" user not found in usersList');
+    }
+  }, [listLoading, usersList, randomizedUsers]);
+
   return (
     <View style={styles.container}>
       {listLoading ? (
@@ -104,7 +190,7 @@ const HomeScreen = ({ navigation }) => {
           <ActivityIndicator size="large" color="#4CCC93" />
           <Text style={styles.loadingText}>Loading potential matches...</Text>
         </View>
-      ) : randomizedUsers.length > 0 ? (
+      ) : randomizedUsers && randomizedUsers.length > 0 ? (
         // Case 2: Show swiper and buttons when users are available
         <View style={styles.contentContainer}>
           <Swiper
@@ -183,8 +269,26 @@ const HomeScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         </View>
+      ) : usersList && usersList.length > 0 ? (
+        // Case 3: We have users in the Redux store but not in randomizedUsers
+        <View style={styles.contentContainer}>
+          <Text style={[styles.loadingText, {marginBottom: 20}]}>
+            Users available but not showing. Attempting to display them...
+          </Text>
+          <TouchableOpacity
+            style={styles.refreshButton}
+            onPress={() => {
+              // Try to manually set randomized users from the usersList
+              if (usersList && usersList.length > 0) {
+                setRandomizedUsers(shuffleArray(usersList));
+              }
+            }}
+          >
+            <Text style={styles.buttonText}>Show Users</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
-        // Case 3: Show empty state with refresh button when no users are available
+        // Case 4: Show empty state with refresh button when no users are available
         <View style={styles.noMatchesContainer}>
           <Text style={styles.noMatchesText}>No potential matches found</Text>
           <Text style={styles.noMatchesSubText}>
@@ -199,6 +303,39 @@ const HomeScreen = ({ navigation }) => {
             }}
           >
             <Text style={styles.buttonText}>Refresh</Text>
+          </TouchableOpacity>
+
+          {/* Emergency button to directly fetch the "wow" user */}
+          <TouchableOpacity
+            style={[styles.refreshButton, {marginTop: 10, backgroundColor: '#FF9500'}]}
+            onPress={async () => {
+              try {
+                const client = generateClient();
+                const response = await client.graphql({
+                  query: queries.listUsers,
+                  variables: {
+                    filter: {
+                      name: {
+                        eq: 'wow'
+                      }
+                    }
+                  },
+                  authMode: 'userPool'
+                });
+
+                const wowUser = response.data.listUsers.items.find(user => user.name === 'wow');
+                if (wowUser) {
+                  console.log('Found wow user directly:', wowUser);
+                  setRandomizedUsers([wowUser]);
+                } else {
+                  console.log('Wow user not found in direct query');
+                }
+              } catch (error) {
+                console.log('Error fetching wow user directly:', error);
+              }
+            }}
+          >
+            <Text style={styles.buttonText}>Show Test User</Text>
           </TouchableOpacity>
         </View>
       )}

@@ -203,7 +203,7 @@ const ProfileCreation = ({ navigation }) => {
             disabled={isLoading}
           >
             <Text style={styles.saveButtonText}>
-              {isLoading ? 'Saving...' : 'Save Profile'}
+              {isLoading ? 'Saving...' : 'Create Profile'}
             </Text>
           </TouchableOpacity>
           
