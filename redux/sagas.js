@@ -37,7 +37,7 @@ function* fetchHomeDataSaga({ payload: navigation }) {
         name: username || 'New User',
         age: 25,
         bio: 'Tell us about yourself',
-        imageUrl: "https://us-east-2.admin.amplifyapp.com/static/media/amplify-logo.677fad72.svg",
+        imageUrl: "https://img.freepik.com/free-vector/blue-circle-with-white-user_78370-4707.jpg",
         gender: 'MALE', // Default value from enum Gender
         lookingFor: ['FEMALE'], // Array of Gender enum values
         location: 'Your Location',

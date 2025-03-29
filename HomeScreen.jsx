@@ -1,16 +1,48 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { StyleSheet, View, Text, Image, TouchableOpacity, Dimensions, ActivityIndicator, Platform } from 'react-native';
 import Swiper from 'react-native-deck-swiper';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchHomeData, createLikeAction } from './redux/actions';
 import { generateClient } from 'aws-amplify/api';
 import * as queries from './src/graphql/queries';
+import { getCurrentUser } from 'aws-amplify/auth';
+
+const client = generateClient()
 
 const { height: windowHeight } = Dimensions.get('window');
 
 const HomeScreen = ({ navigation }) => {
   const dispatch = useDispatch();
   const { usersList, currentUser, sentLikeeIds, receivedLikerIds, listLoading } = useSelector(state => state.user);
+
+  const checkUser = useCallback(async () => {
+    try {
+      const { username, userId } = await getCurrentUser();
+            if (!userId || !username) {
+              throw new Error('User information not available');
+            }
+            const existingUser = await client.graphql({
+              query: queries.getUser,
+              variables: { id: userId },
+              authMode: 'userPool',
+            });
+            if (existingUser.data.getUser) {
+              console.log('User profile already exists:', existingUser.data.getUser);
+              navigation.navigate("ProfileTab", {
+                screen: "ProfileCreation",
+                initial: true
+            });
+              return;
+            }
+    }
+    catch (err) {
+      console.error(err);
+    }
+  }, [navigation])
+
+  useEffect(() => {
+    checkUser();
+  }, [checkUser])
   const swiperRef = useRef(null);
   const [randomizedUsers, setRandomizedUsers] = useState([]);
 
@@ -30,77 +62,14 @@ const HomeScreen = ({ navigation }) => {
     dispatch(fetchHomeData(navigation));
   }, [dispatch, navigation]);
 
-  // Separate effect to handle the case where users exist but aren't displayed
+  // Initialize randomizedUsers only when it's empty and usersList has data
   useEffect(() => {
-    if (usersList && usersList.length > 0 && (!randomizedUsers || randomizedUsers.length === 0)) {
-      console.log('Users exist but not displayed, forcing update...');
-      // Use a timeout to ensure this doesn't cause an infinite loop
-      const timer = setTimeout(() => {
-        setRandomizedUsers(shuffleArray(usersList));
-      }, 500);
-
-      return () => clearTimeout(timer);
-    }
-  }, [usersList, randomizedUsers]);
-
-  // Randomize users when usersList changes
-  useEffect(() => {
-    if (usersList && usersList.length > 0) {
-      console.log('Users available:', usersList.length);
-      // Make a deep copy to ensure we're not affected by reference issues
+    if (usersList && usersList.length > 0 && randomizedUsers.length === 0) {
+      console.log('Initializing randomizedUsers');
       const usersCopy = JSON.parse(JSON.stringify(usersList));
       setRandomizedUsers(shuffleArray(usersCopy));
-    } else {
-      console.log('No users in usersList or empty array');
-
-      // EMERGENCY FALLBACK: If we have no users in the list, try to fetch the "wow" user directly
-      if (!usersList || usersList.length === 0) {
-        console.log('Attempting to fetch wow user directly as emergency fallback');
-        // This is a last resort to ensure the "wow" user is displayed
-        const fetchWowUser = async () => {
-          try {
-            const client = generateClient();
-            const response = await client.graphql({
-              query: queries.listUsers,
-              variables: {
-                filter: {
-                  name: {
-                    eq: 'wow'
-                  }
-                }
-              },
-              authMode: 'userPool'
-            });
-
-            const wowUser = response.data.listUsers.items.find(user => user.name === 'wow');
-            if (wowUser) {
-              console.log('Found wow user directly:', wowUser);
-              setRandomizedUsers([wowUser]);
-            } else {
-              setRandomizedUsers([]);
-            }
-          } catch (error) {
-            console.log('Error fetching wow user directly:', error);
-            setRandomizedUsers([]);
-          }
-        };
-
-        fetchWowUser();
-      } else {
-        // Reset randomizedUsers when usersList is empty to maintain consistency
-        setRandomizedUsers([]);
-      }
     }
-  }, [usersList]);
-
-  useEffect(() => {
-    if (sentLikeeIds && receivedLikerIds && currentUser) {
-      const newMatches = sentLikeeIds.filter(id => receivedLikerIds.includes(id));
-      if (newMatches.length > 0) {
-        console.log('New matches found:', newMatches);
-      }
-    }
-  }, [sentLikeeIds, receivedLikerIds, currentUser]);
+  }, [usersList, randomizedUsers]);
 
   const handleLike = (index) => {
     if (!randomizedUsers[index] || listLoading) return;
@@ -115,12 +84,9 @@ const HomeScreen = ({ navigation }) => {
 
     dispatch(createLikeAction(likeInput));
 
-    // Remove the user from both randomized list and original list
+    // Remove the user from randomizedUsers
     const newRandomizedUsers = randomizedUsers.filter(user => user?.id !== swipedUser?.id);
     setRandomizedUsers(newRandomizedUsers);
-
-    const newUsersList = usersList.filter(user => user?.id !== swipedUser?.id);
-    dispatch({ type: 'SET_USERS_LIST', payload: newUsersList });
 
     if (isMatched) {
       alert(`You matched with ${swipedUser.name}!`);
@@ -131,10 +97,11 @@ const HomeScreen = ({ navigation }) => {
     if (!randomizedUsers[index] || listLoading) return;
     const swipedUser = randomizedUsers[index];
 
-    // Remove the user from both randomized list and original list
+    // Remove the user from randomizedUsers
     const newRandomizedUsers = randomizedUsers.filter(user => user?.id !== swipedUser?.id);
     setRandomizedUsers(newRandomizedUsers);
 
+    // Update usersList in Redux
     const newUsersList = usersList.filter(user => user?.id !== swipedUser?.id);
     dispatch({ type: 'SET_USERS_LIST', payload: newUsersList });
   };
@@ -163,7 +130,6 @@ const HomeScreen = ({ navigation }) => {
       randomizedUsersLength: randomizedUsers?.length || 0
     });
 
-    // Log detailed information about the users in usersList
     if (usersList && usersList.length > 0) {
       console.log('Users in usersList:', usersList.map(user => ({
         id: user.id,
@@ -172,26 +138,16 @@ const HomeScreen = ({ navigation }) => {
         lookingFor: user.lookingFor
       })));
     }
-
-    // Check if the specific user "wow" exists in the Redux store
-    const wowUser = usersList?.find(user => user.name === 'wow');
-    if (wowUser) {
-      console.log('Found "wow" user in usersList:', wowUser);
-    } else {
-      console.log('"wow" user not found in usersList');
-    }
   }, [listLoading, usersList, randomizedUsers]);
 
   return (
     <View style={styles.container}>
       {listLoading ? (
-        // Case 1: Loading indicator when data is being fetched
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#4CCC93" />
           <Text style={styles.loadingText}>Loading potential matches...</Text>
         </View>
-      ) : randomizedUsers && randomizedUsers.length > 0 ? (
-        // Case 2: Show swiper and buttons when users are available
+      ) : randomizedUsers.length > 0 ? (
         <View style={styles.contentContainer}>
           <Swiper
             ref={swiperRef}
@@ -269,26 +225,7 @@ const HomeScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         </View>
-      ) : usersList && usersList.length > 0 ? (
-        // Case 3: We have users in the Redux store but not in randomizedUsers
-        <View style={styles.contentContainer}>
-          <Text style={[styles.loadingText, {marginBottom: 20}]}>
-            Users available but not showing. Attempting to display them...
-          </Text>
-          <TouchableOpacity
-            style={styles.refreshButton}
-            onPress={() => {
-              // Try to manually set randomized users from the usersList
-              if (usersList && usersList.length > 0) {
-                setRandomizedUsers(shuffleArray(usersList));
-              }
-            }}
-          >
-            <Text style={styles.buttonText}>Show Users</Text>
-          </TouchableOpacity>
-        </View>
       ) : (
-        // Case 4: Show empty state with refresh button when no users are available
         <View style={styles.noMatchesContainer}>
           <Text style={styles.noMatchesText}>No potential matches found</Text>
           <Text style={styles.noMatchesSubText}>
@@ -299,13 +236,10 @@ const HomeScreen = ({ navigation }) => {
             style={styles.refreshButton}
             onPress={() => {
               dispatch(fetchHomeData(navigation));
-              // This will trigger the useEffect that randomizes users when usersList changes
             }}
           >
             <Text style={styles.buttonText}>Refresh</Text>
           </TouchableOpacity>
-
-          {/* Emergency button to directly fetch the "wow" user */}
           <TouchableOpacity
             style={[styles.refreshButton, {marginTop: 10, backgroundColor: '#FF9500'}]}
             onPress={async () => {
@@ -348,7 +282,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f0f0f0',
   },
-  // Loading state styles
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -361,12 +294,10 @@ const styles = StyleSheet.create({
     color: '#555',
     fontWeight: '500',
   },
-  // Content container for swiper and buttons
   contentContainer: {
     flex: 1,
     position: 'relative',
   },
-  // No matches state styles
   noMatchesContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -394,7 +325,6 @@ const styles = StyleSheet.create({
     width: '80%',
     alignItems: 'center',
   },
-  // Card styles
   card: {
     height: windowHeight * 0.85,
     width: '100%',
@@ -425,7 +355,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#000',
   },
-  // Button styles
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
